@@ -44,6 +44,7 @@ class StudentRepository(context: Context) {
     fun getTimetableForDayFlow(dayOfWeek: Int): Flow<List<TimetableEntry>> = timetableDao.getTimetableForDayFlow(dayOfWeek)
     suspend fun getTimetableForDay(dayOfWeek: Int): List<TimetableEntry> = timetableDao.getTimetableForDay(dayOfWeek)
     suspend fun insertTimetable(entry: TimetableEntry) = timetableDao.insertTimetable(entry)
+    suspend fun updateTimetable(entry: TimetableEntry) = timetableDao.updateTimetable(entry)
     suspend fun deleteTimetable(entry: TimetableEntry) = timetableDao.deleteTimetable(entry)
 
     // CollegeDay Methods

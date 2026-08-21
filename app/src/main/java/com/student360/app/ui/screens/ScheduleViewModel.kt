@@ -3,8 +3,10 @@ package com.student360.app.ui.screens
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.student360.app.data.local.entity.StudentProfile
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.local.entity.TimetableEntry
+import com.student360.app.data.repository.OverallStats
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.service.NotificationScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +19,12 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     private val repository = StudentRepository(application)
 
+    private val _profile = MutableStateFlow<StudentProfile?>(null)
+    val profile: StateFlow<StudentProfile?> = _profile.asStateFlow()
+
+    private val _overallStats = MutableStateFlow<OverallStats?>(null)
+    val overallStats: StateFlow<OverallStats?> = _overallStats.asStateFlow()
+
     private val _subjects = MutableStateFlow<List<Subject>>(emptyList())
     val subjects: StateFlow<List<Subject>> = _subjects.asStateFlow()
 
@@ -25,8 +33,19 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     init {
         viewModelScope.launch {
+            repository.profileFlow.collectLatest {
+                _profile.value = it
+            }
+        }
+        viewModelScope.launch {
             repository.subjectsFlow.collectLatest {
                 _subjects.value = it
+                calculateOverallStats()
+            }
+        }
+        viewModelScope.launch {
+            repository.allAttendanceFlow.collectLatest {
+                calculateOverallStats()
             }
         }
         viewModelScope.launch {
@@ -34,6 +53,25 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 _timetable.value = it
             }
         }
+    }
+
+    private suspend fun calculateOverallStats() {
+        val subjects = repository.getAllSubjects()
+        val allAttendance = repository.getAllAttendance()
+
+        var totalAttended = 0
+        var totalConducted = 0
+
+        subjects.forEach { subject ->
+            val records = allAttendance.filter { it.subjectId == subject.id }
+            val attended = records.count { it.status == com.student360.app.data.local.entity.AttendanceStatus.PRESENT } + subject.manualAttended
+            val missed = records.count { it.status == com.student360.app.data.local.entity.AttendanceStatus.ABSENT } + (subject.manualConducted - subject.manualAttended).coerceAtLeast(0)
+            totalAttended += attended
+            totalConducted += (attended + missed)
+        }
+
+        val pct = if (totalConducted > 0) (totalAttended.toDouble() / totalConducted.toDouble()) * 100.0 else 100.0
+        _overallStats.value = OverallStats(totalAttended, totalConducted, pct)
     }
 
     fun addTimetableEntry(
@@ -78,6 +116,37 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             NotificationScheduler.cancelLectureAlarm(getApplication(), entry.id)
             repository.deleteTimetable(entry)
+        }
+    }
+
+    fun moveEntryUp(dayOfWeek: Int, index: Int) {
+        if (index <= 0) return
+        viewModelScope.launch {
+            val dayEntries = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }.toMutableList()
+            if (index < dayEntries.size) {
+                val current = dayEntries[index]
+                val prev = dayEntries[index - 1]
+                // Swap their start and end times
+                val updatedCurrent = current.copy(startTime = prev.startTime, endTime = prev.endTime)
+                val updatedPrev = prev.copy(startTime = current.startTime, endTime = current.endTime)
+                repository.updateTimetable(updatedCurrent)
+                repository.updateTimetable(updatedPrev)
+            }
+        }
+    }
+
+    fun moveEntryDown(dayOfWeek: Int, index: Int) {
+        viewModelScope.launch {
+            val dayEntries = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }.toMutableList()
+            if (index in 0 until dayEntries.size - 1) {
+                val current = dayEntries[index]
+                val next = dayEntries[index + 1]
+                // Swap their start and end times
+                val updatedCurrent = current.copy(startTime = next.startTime, endTime = next.endTime)
+                val updatedNext = next.copy(startTime = current.startTime, endTime = current.endTime)
+                repository.updateTimetable(updatedCurrent)
+                repository.updateTimetable(updatedNext)
+            }
         }
     }
 }
