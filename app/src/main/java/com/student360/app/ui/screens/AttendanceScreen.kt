@@ -5,6 +5,7 @@ package com.student360.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -79,96 +80,104 @@ fun AttendanceScreen(
                 .padding(paddingValues)
                 .background(BgDark)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Top Attendance Overview Hero Card
-                StudentCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    backgroundColor = CardDark,
-                    borderColor = overallStatusColor.copy(alpha = 0.35f)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Top Attendance Hero Card
+                item {
+                    StudentCard(
+                        backgroundColor = CardDark,
+                        borderColor = BorderDark
                     ) {
-                        Column {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${String.format("%.1f", overallPercentage)}%",
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryText
+                                )
+                                Button(
+                                    onClick = { showSimulator = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                                    border = BorderStroke(1.dp, BorderDark),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text("Simulator ⚡", color = BrandCyan, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            // Progress container with classes count inside
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(28.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(SurfaceDark)
+                                    .border(BorderStroke(1.dp, BrandBlue.copy(alpha = 0.6f)), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 10.dp),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                // Background progress fill
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth((overallPercentage / 100.0).toFloat().coerceIn(0f, 1f))
+                                        .background(BrandBlue.copy(alpha = 0.25f))
+                                )
+                                Text(
+                                    "$totalAttended / $totalConducted classes",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SecondaryText,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
                             Text(
-                                "Attendance Overview",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = SecondaryText
+                                "Target 75%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandCyan
                             )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                "${String.format("%.1f", overallPercentage)}%",
-                                style = MaterialTheme.typography.headlineLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = overallStatusColor
-                            )
-                        }
-                        Button(
-                            onClick = { showSimulator = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
-                            border = BorderStroke(1.dp, BorderDark),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text("Simulator ⚡", color = LightPurple, style = MaterialTheme.typography.labelMedium)
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-                    StudentProgressBar(
-                        progress = (overallPercentage / 100.0).toFloat(),
-                        color = overallStatusColor,
-                        trackColor = SurfaceDark,
-                        height = 8.dp
+                // Section Header
+                item {
+                    SectionHeader(
+                        title = "Subjects",
+                        actionText = "+ Add Subject",
+                        onActionClick = { showAddSubjectDialog = true }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "$totalAttended / $totalConducted total classes",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = SecondaryText
-                        )
-                        Text(
-                            "Target: 75%",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = SecondaryText
-                        )
-                    }
                 }
 
                 // Subject Cards List or Empty State
                 if (subjectsWithStats.isEmpty()) {
-                    EmptyStateView(
-                        icon = Icons.Default.CheckCircle,
-                        title = "No Subjects Added Yet",
-                        subtitle = "Track your attendance by adding your courses and academic subjects.",
-                        actionText = "+ Add First Subject",
-                        onActionClick = { showAddSubjectDialog = true },
-                        modifier = Modifier.weight(1f)
-                    )
+                    item {
+                        EmptyStateView(
+                            icon = Icons.Default.CheckCircle,
+                            title = "No Subjects Added Yet",
+                            subtitle = "Track your attendance by adding your courses and academic subjects.",
+                            actionText = "+ Add First Subject",
+                            onActionClick = { showAddSubjectDialog = true }
+                        )
+                    }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        items(subjectsWithStats) { (subject, stats) ->
-                            SubjectAttendanceCard(
-                                subject = subject,
-                                stats = stats,
-                                onMark = { status -> viewModel.markAttendance(subject.id, status) },
-                                onEdit = { overrideSubject = subject }
-                            )
-                        }
+                    items(subjectsWithStats) { (subject, stats) ->
+                        SubjectAttendanceCard(
+                            subject = subject,
+                            stats = stats,
+                            onMark = { status -> viewModel.markAttendance(subject.id, status) },
+                            onEdit = { overrideSubject = subject }
+                        )
                     }
                 }
             }
@@ -241,121 +250,120 @@ fun SubjectAttendanceCard(
         backgroundColor = CardDark,
         borderColor = BorderDark
     ) {
-        // Top Header: Subject info & status badge + edit button
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+            // Header Row: Subject Name & Percentage
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    subject.name,
+                    text = subject.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = PrimaryText,
+                    modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "Code: ${subject.code.ifBlank { "N/A" }} • ${subject.faculty.ifBlank { "Faculty" }}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    text = "${String.format("%.1f", stats.percentage)}%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+
+            // Subtitle: Class count & Target
+            Text(
+                text = "${stats.attended} / ${(stats.attended + stats.missed)} classes · Target ${subject.targetPercentage.toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                color = SecondaryText
+            )
+
+            // Status Badge & Edit Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 StatusBadge(text = statusText, color = statusColor)
-                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
                     Icon(
                         Icons.Default.Edit,
                         contentDescription = "Edit Baseline Override",
-                        tint = SecondaryText,
+                        tint = SecondaryText.copy(alpha = 0.7f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Middle Row: Percentage & Class counts
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    "${String.format("%.1f", stats.percentage)}%",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor
-                )
-                Text(
-                    "Target ${subject.targetPercentage.toInt()}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = SecondaryText,
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
-            }
-            Text(
-                "${stats.attended} / ${(stats.attended + stats.missed)} classes",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-                color = PrimaryText
+            // Progress Bar
+            StudentProgressBar(
+                progress = (stats.percentage / 100.0).toFloat(),
+                color = statusColor,
+                trackColor = SurfaceDark,
+                height = 5.dp
             )
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        StudentProgressBar(
-            progress = (stats.percentage / 100.0).toFloat(),
-            color = statusColor,
-            trackColor = SurfaceDark,
-            height = 6.dp
-        )
+            Spacer(modifier = Modifier.height(4.dp))
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Bottom Controls: Clean non-wrapping Present / Absent / Cancelled
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { onMark(AttendanceStatus.PRESENT) },
-                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f).height(38.dp)
+            // Action Buttons: Present / Absent / Cancelled
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("✓ Present", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
-            }
-            Button(
-                onClick = { onMark(AttendanceStatus.ABSENT) },
-                colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f).height(38.dp)
-            ) {
-                Text("× Absent", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
-            }
-            Button(
-                onClick = { onMark(AttendanceStatus.OFF) },
-                colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
-                border = BorderStroke(1.dp, BorderDark),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1f).height(38.dp)
-            ) {
-                Text("— Off", color = SecondaryText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, maxLines = 1)
+                Button(
+                    onClick = { onMark(AttendanceStatus.PRESENT) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF142E21)),
+                    border = BorderStroke(1.dp, SuccessGreen.copy(alpha = 0.4f)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f).height(38.dp)
+                ) {
+                    Text(
+                        "Present",
+                        color = SuccessGreen,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+                Button(
+                    onClick = { onMark(AttendanceStatus.ABSENT) },
+                    colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                    border = BorderStroke(1.dp, BorderDark),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f).height(38.dp)
+                ) {
+                    Text(
+                        "Absent",
+                        color = PrimaryText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                }
+                Button(
+                    onClick = { onMark(AttendanceStatus.OFF) },
+                    colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                    border = BorderStroke(1.dp, BorderDark),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f).height(38.dp)
+                ) {
+                    Text(
+                        "Cancelled",
+                        color = SecondaryText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }
