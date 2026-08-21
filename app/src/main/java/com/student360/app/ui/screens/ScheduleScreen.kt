@@ -1,25 +1,40 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.student360.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.StudentRepository
+import com.student360.app.ui.components.*
+import com.student360.app.ui.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleScreen(
     repository: StudentRepository,
@@ -32,14 +47,21 @@ fun ScheduleScreen(
     var showAddDialog by remember { mutableStateOf(false) }
 
     val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val fullDaysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 
     val filteredList = timetable.filter { it.dayOfWeek == selectedDayTab }
         .sortedBy { it.startTime }
 
     Scaffold(
+        containerColor = BgDark,
         floatingActionButton = {
             if (subjects.isNotEmpty()) {
-                FloatingActionButton(onClick = { showAddDialog = true }) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = PrimaryPurple,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Lecture")
                 }
             }
@@ -49,30 +71,57 @@ fun ScheduleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(BgDark)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                TabRow(selectedTabIndex = selectedDayTab) {
-                    daysOfWeek.forEachIndexed { index, day ->
-                        Tab(
-                            selected = selectedDayTab == index,
-                            onClick = { selectedDayTab = index },
-                            text = { Text(day) }
-                        )
+                // Compact Horizontal Day Pill Selector
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(daysOfWeek) { index, day ->
+                        val isSelected = selectedDayTab == index
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedDayTab = index },
+                            color = if (isSelected) PrimaryPurple else CardDark,
+                            border = BorderStroke(1.dp, if (isSelected) PrimaryPurple else BorderDark),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = day,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) Color.White else SecondaryText,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            )
+                        }
                     }
                 }
 
                 if (subjects.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("Please add subjects first in settings or onboarding.")
-                    }
+                    EmptyStateView(
+                        icon = Icons.Default.DateRange,
+                        title = "No Subjects Added",
+                        subtitle = "Please add your courses first in the Attendance tab or Onboarding.",
+                        modifier = Modifier.weight(1f)
+                    )
                 } else if (filteredList.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("No classes scheduled for ${daysOfWeek[selectedDayTab]}")
-                    }
+                    EmptyStateView(
+                        icon = Icons.Default.DateRange,
+                        title = "No Lectures on ${fullDaysOfWeek[selectedDayTab]}",
+                        subtitle = "Enjoy your day off or tap + to schedule a lecture.",
+                        actionText = "+ Add Lecture",
+                        onActionClick = { showAddDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(filteredList) { entry ->
@@ -110,38 +159,78 @@ fun LectureCard(
     subjectFaculty: String,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    StudentCard(
+        backgroundColor = CardDark,
+        borderColor = BorderDark
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    subjectName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    "⏰ ${entry.startTime} - ${entry.endTime}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    "📍 Room: ${entry.room}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                if (!entry.facultyOverride.isNullOrBlank() || subjectFaculty.isNotBlank()) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     Text(
-                        "👤 Faculty: ${entry.facultyOverride ?: subjectFaculty}",
-                        style = MaterialTheme.typography.bodySmall
+                        subjectName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = ElevatedCardDark,
+                        border = BorderStroke(1.dp, BorderDark)
+                    ) {
+                        Text(
+                            text = "${entry.startTime} - ${entry.endTime}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = LightPurple,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "📍 Room ${entry.room}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText
+                    )
+                    val facultyText = entry.facultyOverride?.ifBlank { null } ?: subjectFaculty.ifBlank { null }
+                    if (facultyText != null) {
+                        Text(
+                            "👤 $facultyText",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete Lecture")
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete Lecture",
+                    tint = SecondaryText,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -173,14 +262,24 @@ fun AddLectureDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Lecture") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Add Lecture",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Subject Dropdown
                 ExposedDropdownMenuBox(
                     expanded = subjectDropdownExpanded,
                     onExpandedChange = { subjectDropdownExpanded = it }
@@ -191,15 +290,23 @@ fun AddLectureDialog(
                         readOnly = true,
                         label = { Text("Select Subject") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subjectDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = subjectDropdownExpanded,
-                        onDismissRequest = { subjectDropdownExpanded = false }
+                        onDismissRequest = { subjectDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         subjects.forEachIndexed { index, sub ->
                             DropdownMenuItem(
-                                text = { Text(sub.name) },
+                                text = { Text(sub.name, color = PrimaryText) },
                                 onClick = {
                                     subjectIndex = index
                                     subjectDropdownExpanded = false
@@ -209,6 +316,7 @@ fun AddLectureDialog(
                     }
                 }
 
+                // Day Dropdown
                 ExposedDropdownMenuBox(
                     expanded = dayDropdownExpanded,
                     onExpandedChange = { dayDropdownExpanded = it }
@@ -219,15 +327,23 @@ fun AddLectureDialog(
                         readOnly = true,
                         label = { Text("Select Day") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = dayDropdownExpanded,
-                        onDismissRequest = { dayDropdownExpanded = false }
+                        onDismissRequest = { dayDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         daysOfWeek.forEachIndexed { index, day ->
                             DropdownMenuItem(
-                                text = { Text(day) },
+                                text = { Text(day, color = PrimaryText) },
                                 onClick = {
                                     selectedDay = index
                                     dayDropdownExpanded = false
@@ -237,27 +353,48 @@ fun AddLectureDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = startTime,
-                    onValueChange = { startTime = it },
-                    label = { Text("Start Time (HH:MM)") },
-                    placeholder = { Text("09:00") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = endTime,
-                    onValueChange = { endTime = it },
-                    label = { Text("End Time (HH:MM)") },
-                    placeholder = { Text("10:00") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startTime,
+                        onValueChange = { startTime = it },
+                        label = { Text("Start (HH:MM)") },
+                        placeholder = { Text("09:00") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = endTime,
+                        onValueChange = { endTime = it },
+                        label = { Text("End (HH:MM)") },
+                        placeholder = { Text("10:00") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
                 OutlinedTextField(
                     value = room,
                     onValueChange = { room = it },
-                    label = { Text("Room / Location") },
-                    placeholder = { Text("LHC-101") },
+                    label = { Text("Room / Location (e.g. LHC-101)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -265,9 +402,17 @@ fun AddLectureDialog(
                     value = facultyOverride,
                     onValueChange = { facultyOverride = it },
                     label = { Text("Faculty (Optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                // Notification Dropdown
                 ExposedDropdownMenuBox(
                     expanded = notifyDropdownExpanded,
                     onExpandedChange = { notifyDropdownExpanded = it }
@@ -278,15 +423,23 @@ fun AddLectureDialog(
                         readOnly = true,
                         label = { Text("Pre-Class Notification") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = notifyDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = notifyDropdownExpanded,
-                        onDismissRequest = { notifyDropdownExpanded = false }
+                        onDismissRequest = { notifyDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         notificationOptions.forEachIndexed { index, option ->
                             DropdownMenuItem(
-                                text = { Text(option) },
+                                text = { Text(option, color = PrimaryText) },
                                 onClick = {
                                     notificationIndex = index
                                     notifyDropdownExpanded = false
@@ -310,14 +463,16 @@ fun AddLectureDialog(
                         notificationMinutes[notificationIndex]
                     )
                 },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp),
                 enabled = startTime.isNotBlank() && endTime.isNotBlank() && room.isNotBlank()
             ) {
-                Text("Save")
+                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = SecondaryText)
             }
         }
     )

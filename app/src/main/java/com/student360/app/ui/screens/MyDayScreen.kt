@@ -1,17 +1,28 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.student360.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.AssignmentPriority
@@ -19,11 +30,10 @@ import com.student360.app.data.local.entity.TaskCategory
 import com.student360.app.data.local.entity.TaskPriority
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.repository.StudentRepository
-import com.student360.app.ui.theme.SafeGreen
-import com.student360.app.ui.theme.SafeGreenLight
+import com.student360.app.ui.components.*
+import com.student360.app.ui.theme.*
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyDayScreen(
     repository: StudentRepository,
@@ -37,21 +47,41 @@ fun MyDayScreen(
     var showAddAssignDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = BgDark,
         floatingActionButton = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FloatingActionButton(onClick = { showAddTaskDialog = true }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Task")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FloatingActionButton(
+                    onClick = { showAddTaskDialog = true },
+                    containerColor = ElevatedCardDark,
+                    contentColor = LightPurple,
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Task", modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Task")
+                        Text("Task", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                 }
                 if (subjects.isNotEmpty()) {
-                    FloatingActionButton(onClick = { showAddAssignDialog = true }, containerColor = MaterialTheme.colorScheme.tertiaryContainer) {
-                        Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Assignment")
+                    FloatingActionButton(
+                        onClick = { showAddAssignDialog = true },
+                        containerColor = PrimaryPurple,
+                        contentColor = Color.White,
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Assignment", modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Assignment")
+                            Text("Assignment", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -62,38 +92,66 @@ fun MyDayScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(BgDark)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        "Today's Progress: ${(progress * 100).toInt()}%",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(10.dp),
-                        color = SafeGreen,
-                        trackColor = SafeGreenLight
-                    )
+            // Today's Progress Card
+            val pctInt = (progress * 100).toInt()
+            val progressColor = if (pctInt == 100) SuccessGreen else PrimaryPurple
+
+            StudentCard(
+                backgroundColor = CardDark,
+                borderColor = BorderDark
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Today's Progress",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = SecondaryText
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            "$pctInt%",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (pctInt == 100) SuccessGreen else PrimaryText
+                        )
+                    }
+                    if (pctInt == 100 && myDayItems.isNotEmpty()) {
+                        StatusBadge(text = "All Done 🎉", color = SuccessGreen)
+                    }
                 }
+                Spacer(modifier = Modifier.height(10.dp))
+                StudentProgressBar(
+                    progress = progress,
+                    color = progressColor,
+                    trackColor = SurfaceDark,
+                    height = 8.dp
+                )
             }
 
             if (myDayItems.isEmpty()) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("Your schedule is clear! Add some tasks or assignments.")
-                }
+                EmptyStateView(
+                    icon = Icons.Default.CheckCircle,
+                    title = "You're all caught up 🎉",
+                    subtitle = "No tasks or assignments due today. Add a new item to plan your day.",
+                    actionText = "+ Add Task",
+                    onActionClick = { showAddTaskDialog = true },
+                    modifier = Modifier.weight(1f)
+                )
             } else {
                 val categories = listOf("COLLEGE", "STUDY", "ASSIGNMENTS", "PERSONAL")
-                
+
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     categories.forEach { cat ->
                         val catItems = myDayItems.filter { it.category == cat }
@@ -103,7 +161,8 @@ fun MyDayScreen(
                                     text = cat,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = LightPurple,
+                                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
                                 )
                             }
                             items(catItems) { item ->
@@ -148,14 +207,19 @@ fun MyDayChecklistItem(
     item: MyDayItem,
     onToggle: (Boolean) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    val prioColor = when (item.priority) {
+        TaskPriority.URGENT -> DangerRed
+        TaskPriority.HIGH -> WarningOrange
+        TaskPriority.MEDIUM -> LightPurple
+        TaskPriority.LOW -> SecondaryText
+    }
+
+    StudentCard(
+        backgroundColor = if (item.completed) SurfaceDark else CardDark,
+        borderColor = if (item.completed) BorderDark.copy(alpha = 0.4f) else BorderDark
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -164,37 +228,51 @@ fun MyDayChecklistItem(
                 modifier = Modifier.weight(1f)
             ) {
                 if (item.category == "COLLEGE") {
-                    Box(modifier = Modifier.width(24.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(LightPurple.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🏛", style = MaterialTheme.typography.labelSmall)
+                    }
                 } else {
                     Checkbox(
                         checked = item.completed,
-                        onCheckedChange = onToggle
+                        onCheckedChange = onToggle,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = SuccessGreen,
+                            uncheckedColor = SecondaryText,
+                            checkmarkColor = Color.White
+                        )
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Column {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
                     Text(
                         item.title,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyLarge
+                        fontWeight = if (item.completed) FontWeight.Normal else FontWeight.Bold,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (item.completed) SecondaryText else PrimaryText,
+                        textDecoration = if (item.completed) TextDecoration.LineThrough else TextDecoration.None,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         item.subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = SecondaryText.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
             if (item.category != "COLLEGE" && !item.completed) {
-                Text(
-                    item.priority.name,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = when (item.priority) {
-                        TaskPriority.URGENT -> MaterialTheme.colorScheme.error
-                        TaskPriority.HIGH -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.primary
-                    }
-                )
+                Spacer(modifier = Modifier.width(8.dp))
+                StatusBadge(text = item.priority.name, color = prioColor)
             }
         }
     }
@@ -220,25 +298,48 @@ fun AddTaskDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Daily Task") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Add Daily Task",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("Task Title") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = desc,
                     onValueChange = { desc = it },
-                    label = { Text("Description") },
+                    label = { Text("Description (optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -252,15 +353,23 @@ fun AddTaskDialog(
                         readOnly = true,
                         label = { Text("Category") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = catDropdownExpanded,
-                        onDismissRequest = { catDropdownExpanded = false }
+                        onDismissRequest = { catDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         TaskCategory.values().forEach { cat ->
                             DropdownMenuItem(
-                                text = { Text(cat.name) },
+                                text = { Text(cat.name, color = PrimaryText) },
                                 onClick = {
                                     category = cat
                                     catDropdownExpanded = false
@@ -281,14 +390,22 @@ fun AddTaskDialog(
                             readOnly = true,
                             label = { Text("Linked Subject") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subDropdownExpanded) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
                             modifier = Modifier.menuAnchor().fillMaxWidth()
                         )
                         ExposedDropdownMenu(
                             expanded = subDropdownExpanded,
-                            onDismissRequest = { subDropdownExpanded = false }
+                            onDismissRequest = { subDropdownExpanded = false },
+                            modifier = Modifier.background(SurfaceDark)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("None") },
+                                text = { Text("None", color = PrimaryText) },
                                 onClick = {
                                     subjectIndex = -1
                                     subDropdownExpanded = false
@@ -296,7 +413,7 @@ fun AddTaskDialog(
                             )
                             subjects.forEachIndexed { index, sub ->
                                 DropdownMenuItem(
-                                    text = { Text(sub.name) },
+                                    text = { Text(sub.name, color = PrimaryText) },
                                     onClick = {
                                         subjectIndex = index
                                         subDropdownExpanded = false
@@ -317,15 +434,23 @@ fun AddTaskDialog(
                         readOnly = true,
                         label = { Text("Priority") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = prioDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = prioDropdownExpanded,
-                        onDismissRequest = { prioDropdownExpanded = false }
+                        onDismissRequest = { prioDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         TaskPriority.values().forEach { prio ->
                             DropdownMenuItem(
-                                text = { Text(prio.name) },
+                                text = { Text(prio.name, color = PrimaryText) },
                                 onClick = {
                                     priority = prio
                                     prioDropdownExpanded = false
@@ -339,6 +464,13 @@ fun AddTaskDialog(
                     value = durationString,
                     onValueChange = { durationString = it },
                     label = { Text("Duration (Minutes)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -349,14 +481,16 @@ fun AddTaskDialog(
                     val subId = if (subjectIndex == -1) null else subjects[subjectIndex].id
                     onSave(title, desc, category, subId, priority, durationString.toIntOrNull() ?: 30)
                 },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp),
                 enabled = title.isNotBlank()
             ) {
-                Text("Save")
+                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = SecondaryText)
             }
         }
     )
@@ -380,25 +514,48 @@ fun AddAssignmentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Assignment") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Add Assignment",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .verticalScroll(rememberScrollState())
                     .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Assignment Name") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = desc,
                     onValueChange = { desc = it },
-                    label = { Text("Description") },
+                    label = { Text("Description (optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -412,15 +569,23 @@ fun AddAssignmentDialog(
                         readOnly = true,
                         label = { Text("Subject") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = subDropdownExpanded,
-                        onDismissRequest = { subDropdownExpanded = false }
+                        onDismissRequest = { subDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         subjects.forEachIndexed { index, sub ->
                             DropdownMenuItem(
-                                text = { Text(sub.name) },
+                                text = { Text(sub.name, color = PrimaryText) },
                                 onClick = {
                                     subjectIndex = index
                                     subDropdownExpanded = false
@@ -440,15 +605,23 @@ fun AddAssignmentDialog(
                         readOnly = true,
                         label = { Text("Priority") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = prioDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = prioDropdownExpanded,
-                        onDismissRequest = { prioDropdownExpanded = false }
+                        onDismissRequest = { prioDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         AssignmentPriority.values().forEach { prio ->
                             DropdownMenuItem(
-                                text = { Text(prio.name) },
+                                text = { Text(prio.name, color = PrimaryText) },
                                 onClick = {
                                     priority = prio
                                     prioDropdownExpanded = false
@@ -462,6 +635,13 @@ fun AddAssignmentDialog(
                     value = dueDaysString,
                     onValueChange = { dueDaysString = it },
                     label = { Text("Due in (Days from now)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -471,14 +651,16 @@ fun AddAssignmentDialog(
                 onClick = {
                     onSave(name, subjects[subjectIndex].id, desc, dueDaysString.toIntOrNull() ?: 3, priority)
                 },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp),
                 enabled = name.isNotBlank()
             ) {
-                Text("Save")
+                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = SecondaryText)
             }
         }
     )

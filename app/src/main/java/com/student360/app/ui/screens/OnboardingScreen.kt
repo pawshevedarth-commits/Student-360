@@ -1,16 +1,24 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.student360.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.student360.app.data.local.entity.StudentProfile
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.repository.StudentRepository
+import com.student360.app.ui.components.*
+import com.student360.app.ui.theme.*
 import kotlinx.coroutines.launch
 
 @Composable
@@ -42,137 +50,335 @@ fun OnboardingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .background(BgDark)
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        LinearProgressIndicator(
+        StudentProgressBar(
             progress = step.toFloat() / 3f,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
+            color = PrimaryPurple,
+            trackColor = SurfaceDark,
+            height = 6.dp
         )
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Step $step of 3",
-            style = MaterialTheme.typography.labelSmall
+            text = "STEP $step OF 3",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = LightPurple
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         when (step) {
             1 -> {
                 // Step 1 UI: Profile Setup
-                Text("Enter Profile Details", style = MaterialTheme.typography.titleLarge)
+                Student360Logo(emblemSize = 48.dp, showWordmark = true)
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    "Welcome to Student360 👋",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText
+                )
+                Text(
+                    "Let's get your academic profile set up.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = rollNumber, onValueChange = { rollNumber = it }, label = { Text("Roll Number") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = branch, onValueChange = { branch = it }, label = { Text("Branch") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = semesterString, onValueChange = { semesterString = it }, label = { Text("Semester") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = division, onValueChange = { division = it }, label = { Text("Division") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = collegeName, onValueChange = { collegeName = it }, label = { Text("College Name") }, modifier = Modifier.fillMaxWidth())
-                
+
+                StudentCard(
+                    backgroundColor = CardDark,
+                    borderColor = BorderDark,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = { Text("Full Name") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = rollNumber,
+                            onValueChange = { rollNumber = it },
+                            label = { Text("Roll Number") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = branch,
+                            onValueChange = { branch = it },
+                            label = { Text("Branch / Major") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = semesterString,
+                                onValueChange = { semesterString = it },
+                                label = { Text("Semester") },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = PrimaryPurple,
+                                    unfocusedBorderColor = BorderDark,
+                                    focusedTextColor = PrimaryText,
+                                    unfocusedTextColor = PrimaryText
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = division,
+                                onValueChange = { division = it },
+                                label = { Text("Division / Sec") },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = PrimaryPurple,
+                                    unfocusedBorderColor = BorderDark,
+                                    focusedTextColor = PrimaryText,
+                                    unfocusedTextColor = PrimaryText
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        OutlinedTextField(
+                            value = collegeName,
+                            onValueChange = { collegeName = it },
+                            label = { Text("College / University") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.weight(1f))
                 Button(
                     onClick = { if (name.isNotBlank()) step = 2 },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = name.isNotBlank() && collegeName.isNotBlank()
                 ) {
-                    Text("Next: Add Subjects")
+                    Text("Next: Add Subjects →", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
             2 -> {
                 // Step 2 UI: Add Subjects
-                Text("Add Academic Subjects", style = MaterialTheme.typography.titleLarge)
+                Text(
+                    "Add Academic Subjects 📚",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText
+                )
+                Text(
+                    "Add your course subjects for attendance and study tracking.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                OutlinedTextField(value = subName, onValueChange = { subName = it }, label = { Text("Subject Name (e.g. DSA)") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = subCode, onValueChange = { subCode = it }, label = { Text("Code (e.g. CS201)") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = subFaculty, onValueChange = { subFaculty = it }, label = { Text("Faculty Name") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Button(
-                    onClick = {
-                        if (subName.isNotBlank()) {
-                            addedSubjects.add(
-                                Subject(
-                                    name = subName,
-                                    code = subCode,
-                                    faculty = subFaculty
-                                )
-                            )
-                            subName = ""
-                            subCode = ""
-                            subFaculty = ""
-                        }
-                    },
+
+                StudentCard(
+                    backgroundColor = CardDark,
+                    borderColor = BorderDark,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("+ Add Subject")
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = subName,
+                            onValueChange = { subName = it },
+                            label = { Text("Subject Name (e.g. Data Structures)") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = subCode,
+                                onValueChange = { subCode = it },
+                                label = { Text("Code (e.g. CS201)") },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = PrimaryPurple,
+                                    unfocusedBorderColor = BorderDark,
+                                    focusedTextColor = PrimaryText,
+                                    unfocusedTextColor = PrimaryText
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = subFaculty,
+                                onValueChange = { subFaculty = it },
+                                label = { Text("Faculty (optional)") },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = PrimaryPurple,
+                                    unfocusedBorderColor = BorderDark,
+                                    focusedTextColor = PrimaryText,
+                                    unfocusedTextColor = PrimaryText
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                if (subName.isNotBlank()) {
+                                    addedSubjects.add(
+                                        Subject(
+                                            name = subName,
+                                            code = subCode,
+                                            faculty = subFaculty
+                                        )
+                                    )
+                                    subName = ""
+                                    subCode = ""
+                                    subFaculty = ""
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = subName.isNotBlank()
+                        ) {
+                            Text("+ Add Subject to List", color = LightPurple, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Subjects added: ${addedSubjects.size}", style = MaterialTheme.typography.bodyLarge)
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                Spacer(modifier = Modifier.height(14.dp))
+                SectionHeader(title = "Subjects Added (${addedSubjects.size})")
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     items(addedSubjects) { sub ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                            Row(modifier = Modifier.padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text("${sub.name} (${sub.code})", modifier = Modifier.weight(1f))
+                        StudentCard(
+                            backgroundColor = SurfaceDark,
+                            borderColor = BorderDark
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(sub.name, fontWeight = FontWeight.Bold, color = PrimaryText)
+                                    if (sub.code.isNotBlank()) {
+                                        Text(sub.code, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                                    }
+                                }
                                 TextButton(onClick = { addedSubjects.remove(sub) }) {
-                                    Text("Remove", style = MaterialTheme.typography.labelSmall)
+                                    Text("Remove", color = DangerRed, style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
                     }
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { if (addedSubjects.isNotEmpty()) step = 3 },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
                     enabled = addedSubjects.isNotEmpty()
                 ) {
-                    Text("Next: Attendance Baseline")
+                    Text("Next: Starting Baseline →", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
             3 -> {
                 // Step 3 UI: Attendance Overrides
-                Text("Enter Starting Attendance (Optional)", style = MaterialTheme.typography.titleLarge)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("If you are starting midway through the semester, specify your current counts. Otherwise skip.", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "Starting Attendance Baseline 📊",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText
+                )
+                Text(
+                    "Starting midway in the semester? Enter current attendance count. Otherwise leave as 0.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText
+                )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                LazyColumn(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     items(addedSubjects.size) { index ->
                         val sub = addedSubjects[index]
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(sub.name, style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedTextField(
-                                        value = manualAttendedMap[index] ?: "",
-                                        onValueChange = { manualAttendedMap[index] = it },
-                                        label = { Text("Attended") },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    OutlinedTextField(
-                                        value = manualConductedMap[index] ?: "",
-                                        onValueChange = { manualConductedMap[index] = it },
-                                        label = { Text("Conducted") },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
+                        StudentCard(
+                            backgroundColor = CardDark,
+                            borderColor = BorderDark
+                        ) {
+                            Text(sub.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PrimaryText)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = manualAttendedMap[index] ?: "",
+                                    onValueChange = { manualAttendedMap[index] = it },
+                                    label = { Text("Attended") },
+                                    placeholder = { Text("0") },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = PrimaryPurple,
+                                        unfocusedBorderColor = BorderDark,
+                                        focusedTextColor = PrimaryText,
+                                        unfocusedTextColor = PrimaryText
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = manualConductedMap[index] ?: "",
+                                    onValueChange = { manualConductedMap[index] = it },
+                                    label = { Text("Conducted") },
+                                    placeholder = { Text("0") },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = PrimaryPurple,
+                                        unfocusedBorderColor = BorderDark,
+                                        focusedTextColor = PrimaryText,
+                                        unfocusedTextColor = PrimaryText
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = {
                         scope.launch {
@@ -202,9 +408,11 @@ fun OnboardingScreen(
                             onFinished()
                         }
                     },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Finish Setup")
+                    Text("🚀 Finish Setup & Enter Student360", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -1,18 +1,27 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.student360.app.ui.screens
 
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.repository.StudentRepository
+import com.student360.app.ui.components.*
+import com.student360.app.ui.theme.*
 
 @Composable
 fun SettingsScreen(
@@ -77,21 +86,104 @@ fun SettingsScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .background(BgDark)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Edit Profile Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = rollNumber, onValueChange = { rollNumber = it }, label = { Text("Roll Number") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = branch, onValueChange = { branch = it }, label = { Text("Branch") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = semesterString, onValueChange = { semesterString = it }, label = { Text("Semester") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = division, onValueChange = { division = it }, label = { Text("Division") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = collegeName, onValueChange = { collegeName = it }, label = { Text("College Name") }, modifier = Modifier.fillMaxWidth())
+            StudentCard(
+                backgroundColor = CardDark,
+                borderColor = BorderDark
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Edit Profile Details",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryText
+                    )
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Full Name") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = rollNumber,
+                        onValueChange = { rollNumber = it },
+                        label = { Text("Roll Number") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = branch,
+                        onValueChange = { branch = it },
+                        label = { Text("Branch / Department") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = semesterString,
+                            onValueChange = { semesterString = it },
+                            label = { Text("Semester") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = division,
+                            onValueChange = { division = it },
+                            label = { Text("Division / Sec") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryPurple,
+                                unfocusedBorderColor = BorderDark,
+                                focusedTextColor = PrimaryText,
+                                unfocusedTextColor = PrimaryText
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    OutlinedTextField(
+                        value = collegeName,
+                        onValueChange = { collegeName = it },
+                        label = { Text("College / University") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = {
                             viewModel.updateProfile(
@@ -104,46 +196,137 @@ fun SettingsScreen(
                             )
                             Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
                         },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Save Profile Changes")
+                        Text("Save Profile Changes", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
         item {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("🛡️ Data Safety Guarantee", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Your personal data (profile, attendance logs, timetables, and notes) stays entirely on this device. No data is sent to external servers or cloud services.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+            StudentCard(
+                backgroundColor = SurfaceDark,
+                borderColor = SuccessGreen.copy(alpha = 0.35f)
+            ) {
+                Text(
+                    "🛡️ 100% Offline & Private",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = SuccessGreen
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "Your personal data (profile, attendance logs, timetables, and notes) stays entirely on this device. No data is sent to external servers or cloud services.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText
+                )
             }
         }
 
         item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Backups & Migrations", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Transfer your data to another device or create offline recovery points.", style = MaterialTheme.typography.bodySmall)
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
+            StudentCard(
+                backgroundColor = CardDark,
+                borderColor = BorderDark
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Backups & Migrations",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = PrimaryText
+                    )
+                    Text(
+                        "Transfer your data to another device or create offline recovery points.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
                     Button(
                         onClick = { createDocLauncher.launch("Student360_Backup_v1.json") },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Export Backup File")
+                        Text("Export Backup File (.json)", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                     Button(
                         onClick = { openDocLauncher.launch(arrayOf("application/json")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                        colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                        border = BorderStroke(1.dp, BorderDark),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Import Backup File")
+                        Text("Import Backup File", color = LightPurple, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        // About Student360 Section
+        item {
+            StudentCard(
+                backgroundColor = CardDark,
+                borderColor = BorderDark
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Student360Logo(
+                        emblemSize = 40.dp,
+                        showWordmark = true,
+                        tagline = "Version 1.0.0 • Academic Command Center"
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Student360 is an offline-first academic management platform designed to help students track attendance, manage class schedules, time focus study blocks, and prepare for examinations.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = ElevatedCardDark,
+                            border = BorderStroke(1.dp, BorderDark)
+                        ) {
+                            Text(
+                                "🔒 100% Offline",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = BrandCyan,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = ElevatedCardDark,
+                            border = BorderStroke(1.dp, BorderDark)
+                        ) {
+                            Text(
+                                "⚡ Jetpack Compose",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = PrimaryText,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = ElevatedCardDark,
+                            border = BorderStroke(1.dp, BorderDark)
+                        ) {
+                            Text(
+                                "📄 MIT License",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SecondaryText,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }

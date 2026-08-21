@@ -6,8 +6,9 @@ enum class Screen(val title: String) {
     SCHEDULE("Schedule"),
     MY_DAY("My Day"),
     STUDY("Study"),
+    ASSISTANT("Study Assistant"),
+    EXAMS("Exams"),
     PROGRESS("Progress"),
     SETTINGS("Settings"),
-    ALERTS("Alerts"),
-    ASSISTANT("Study Assistant")
+    ALERTS("Alerts")
 }

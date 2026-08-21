@@ -1,12 +1,17 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.student360.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -16,19 +21,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.*
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.service.ExamEngine
+import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
-import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExamsScreen(
     repository: StudentRepository,
@@ -43,9 +49,15 @@ fun ExamsScreen(
         .minByOrNull { it.daysRemaining }
 
     Scaffold(
+        containerColor = BgDark,
         floatingActionButton = {
             if (subjects.isNotEmpty()) {
-                FloatingActionButton(onClick = { showAddDialog = true }) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = PrimaryPurple,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp)
+                ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Exam")
                 }
             }
@@ -55,79 +67,112 @@ fun ExamsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(BgDark)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                
+                // Exam Mode Active Urgent Banner
                 examModeTarget?.let { target ->
                     val subjectName = subjects.find { it.id == target.exam.subjectId }?.name ?: "Subject"
                     val weakTopics = ExamEngine.getWeakTopics(target.topics)
-                    
-                    Card(
+
+                    StudentCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        backgroundColor = Color(0xFF28161A),
+                        borderColor = DangerRed.copy(alpha = 0.5f)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .background(DangerRed.copy(alpha = 0.2f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("🚨", style = MaterialTheme.typography.labelSmall)
+                                }
                                 Text(
-                                    "🚨 EXAM MODE ACTIVE",
+                                    "EXAM MODE ACTIVE",
                                     fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                Text(
-                                    ExamEngine.getUrgencyText(target.daysRemaining),
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = DangerRed
                                 )
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Subject: $subjectName (${target.exam.examType.name})",
-                                style = MaterialTheme.typography.titleSmall
+                            StatusBadge(
+                                text = ExamEngine.getUrgencyText(target.daysRemaining),
+                                color = DangerRed
                             )
-                            Text(
-                                "Preparation: ${target.prepPercentage.toInt()}% complete",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                        }
 
-                            if (weakTopics.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            "$subjectName (${target.exam.examType.name})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryText
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Preparation: ${target.prepPercentage.toInt()}% complete",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        StudentProgressBar(
+                            progress = (target.prepPercentage / 100.0).toFloat().coerceIn(0f, 1f),
+                            color = DangerRed,
+                            trackColor = SurfaceDark,
+                            height = 6.dp
+                        )
+
+                        if (weakTopics.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Surface(
+                                color = SurfaceDark,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, BorderDark)
+                            ) {
                                 Text(
-                                    "Weak Topics: ${weakTopics.take(3).joinToString { it.topicName }}",
-                                    style = MaterialTheme.typography.bodySmall
+                                    "💡 Recommended Focus: Study '${weakTopics.first().topicName}' today for 45 mins.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = PrimaryText,
+                                    modifier = Modifier.padding(10.dp)
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                                    Text(
-                                        "Action recommendation: Study '${weakTopics.first().topicName}' today for 45 minutes.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(10.dp)
-                                    )
-                                }
                             }
                         }
                     }
                 }
 
                 if (subjects.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("Please add subjects first in settings or onboarding.")
-                    }
+                    EmptyStateView(
+                        icon = Icons.Default.Info,
+                        title = "No Subjects Found",
+                        subtitle = "Please add subjects first in Attendance tab or Onboarding.",
+                        modifier = Modifier.weight(1f)
+                    )
                 } else if (examsWithPrep.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("No exams scheduled. Tap + to add.")
-                    }
+                    EmptyStateView(
+                        icon = Icons.Default.DateRange,
+                        title = "No Upcoming Exams",
+                        subtitle = "Add an exam to set targets and track syllabus preparation.",
+                        actionText = "+ Add Exam",
+                        onActionClick = { showAddDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         items(examsWithPrep) { examWithPrep ->
                             val subject = subjects.find { it.id == examWithPrep.exam.subjectId }
@@ -171,138 +216,187 @@ fun ExamPrepCard(
     val daysLeft = examWithPrep.daysRemaining
     val urgencyColor = when {
         daysLeft < 0 -> HolidayGrey
-        daysLeft <= 1 -> CriticalRed
-        daysLeft <= 3 -> CriticalRed
-        daysLeft <= 7 -> WarningYellow
-        else -> SafeGreen
+        daysLeft <= 1 -> DangerRed
+        daysLeft <= 3 -> DangerRed
+        daysLeft <= 7 -> WarningOrange
+        else -> SuccessGreen
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { expanded = !expanded },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    StudentCard(
+        backgroundColor = CardDark,
+        borderColor = BorderDark,
+        onClick = { expanded = !expanded }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "$subjectName (${examWithPrep.exam.examType.name})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Venue: ${examWithPrep.exam.venue} • Time: ${examWithPrep.exam.time}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .background(urgencyColor.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        ExamEngine.getUrgencyText(daysLeft),
-                        color = urgencyColor,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    "Preparation: ${examWithPrep.prepPercentage.toInt()}%",
-                    style = MaterialTheme.typography.labelSmall
+                    "$subjectName (${examWithPrep.exam.examType.name})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "Target: ${examWithPrep.exam.targetMarks} / ${examWithPrep.exam.maxMarks} M",
-                    style = MaterialTheme.typography.labelSmall
+                    "📍 ${examWithPrep.exam.venue} • ⏰ ${examWithPrep.exam.time}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
-            LinearProgressIndicator(
-                progress = (examWithPrep.prepPercentage / 100.0).toFloat().coerceIn(0f, 1f),
-                modifier = Modifier.fillMaxWidth(),
-                color = urgencyColor,
-                trackColor = urgencyColor.copy(alpha = 0.2f)
+            Spacer(modifier = Modifier.width(8.dp))
+            StatusBadge(
+                text = ExamEngine.getUrgencyText(daysLeft),
+                color = urgencyColor
             )
+        }
 
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 16.dp)) {
-                    Divider()
-                    Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Preparation: ${examWithPrep.prepPercentage.toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = PrimaryText
+            )
+            Text(
+                "Target: ${examWithPrep.exam.targetMarks} / ${examWithPrep.exam.maxMarks} M",
+                style = MaterialTheme.typography.bodySmall,
+                color = SecondaryText
+            )
+        }
 
-                    Text("Syllabus Checklist:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                    
-                    if (examWithPrep.topics.isEmpty()) {
-                        Text("No topics defined.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp))
-                    } else {
-                        examWithPrep.topics.forEach { topic ->
+        Spacer(modifier = Modifier.height(6.dp))
+        StudentProgressBar(
+            progress = (examWithPrep.prepPercentage / 100.0).toFloat().coerceIn(0f, 1f),
+            color = urgencyColor,
+            trackColor = SurfaceDark,
+            height = 6.dp
+        )
+
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier.padding(top = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Divider(color = BorderDark)
+
+                Text(
+                    "Syllabus Checklist:",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = LightPurple
+                )
+
+                if (examWithPrep.topics.isEmpty()) {
+                    Text(
+                        "No topics defined yet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                } else {
+                    examWithPrep.topics.forEach { topic ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                topic.topicName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = PrimaryText
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(topic.topicName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    TopicStatusButton("Not Started", topic.status == TopicStatus.NOT_STARTED) {
-                                        onUpdateTopicStatus(topic, TopicStatus.NOT_STARTED)
-                                    }
-                                    TopicStatusButton("In Progress", topic.status == TopicStatus.IN_PROGRESS) {
-                                        onUpdateTopicStatus(topic, TopicStatus.IN_PROGRESS)
-                                    }
-                                    TopicStatusButton("Done", topic.status == TopicStatus.COMPLETED) {
-                                        onUpdateTopicStatus(topic, TopicStatus.COMPLETED)
-                                    }
+                                TopicStatusButton(
+                                    label = "Not Started",
+                                    active = topic.status == TopicStatus.NOT_STARTED,
+                                    activeColor = ElevatedCardDark,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    onUpdateTopicStatus(topic, TopicStatus.NOT_STARTED)
+                                }
+                                TopicStatusButton(
+                                    label = "In Progress",
+                                    active = topic.status == TopicStatus.IN_PROGRESS,
+                                    activeColor = WarningOrange,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    onUpdateTopicStatus(topic, TopicStatus.IN_PROGRESS)
+                                }
+                                TopicStatusButton(
+                                    label = "Done",
+                                    active = topic.status == TopicStatus.COMPLETED,
+                                    activeColor = SuccessGreen,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    onUpdateTopicStatus(topic, TopicStatus.COMPLETED)
                                 }
                             }
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = newTopicName,
-                            onValueChange = { newTopicName = it },
-                            label = { Text("Add Topic") },
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = newTopicName,
+                        onValueChange = { newTopicName = it },
+                        label = { Text("Add Topic") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
                             if (newTopicName.isNotBlank()) {
                                 onAddTopic(newTopicName)
                                 newTopicName = ""
                             }
-                        }) {
-                            Text("Add")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = onDelete,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        modifier = Modifier.fillMaxWidth()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Delete Exam")
+                        Text("Add", color = Color.White, fontWeight = FontWeight.Bold)
                     }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                    border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null, tint = DangerRed, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Delete Exam", color = DangerRed, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -313,17 +407,31 @@ fun ExamPrepCard(
 fun TopicStatusButton(
     label: String,
     active: Boolean,
+    activeColor: Color = PrimaryPurple,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val bgColor = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val textColor = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = bgColor),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-        modifier = Modifier.height(28.dp)
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() },
+        color = if (active) activeColor else SurfaceDark,
+        border = BorderStroke(1.dp, if (active) activeColor else BorderDark),
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Text(label, color = textColor, style = MaterialTheme.typography.labelSmall)
+        Box(
+            modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                label,
+                color = if (active) Color.White else SecondaryText,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -348,13 +456,22 @@ fun AddExamDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Schedule Exam") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Schedule Exam",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ExposedDropdownMenuBox(
                     expanded = subjectDropdownExpanded,
@@ -366,15 +483,23 @@ fun AddExamDialog(
                         readOnly = true,
                         label = { Text("Subject") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subjectDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = subjectDropdownExpanded,
-                        onDismissRequest = { subjectDropdownExpanded = false }
+                        onDismissRequest = { subjectDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         subjects.forEachIndexed { index, sub ->
                             DropdownMenuItem(
-                                text = { Text(sub.name) },
+                                text = { Text(sub.name, color = PrimaryText) },
                                 onClick = {
                                     subjectIndex = index
                                     subjectDropdownExpanded = false
@@ -394,15 +519,23 @@ fun AddExamDialog(
                         readOnly = true,
                         label = { Text("Exam Type") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeDropdownExpanded) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = typeDropdownExpanded,
-                        onDismissRequest = { typeDropdownExpanded = false }
+                        onDismissRequest = { typeDropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         ExamType.values().forEach { type ->
                             DropdownMenuItem(
-                                text = { Text(type.name) },
+                                text = { Text(type.name, color = PrimaryText) },
                                 onClick = {
                                     examType = type
                                     typeDropdownExpanded = false
@@ -417,6 +550,13 @@ fun AddExamDialog(
                     onValueChange = { dateString = it },
                     label = { Text("Date (YYYY-MM-DD)") },
                     placeholder = { Text("2026-08-28") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -425,14 +565,27 @@ fun AddExamDialog(
                     onValueChange = { timeString = it },
                     label = { Text("Time (HH:MM)") },
                     placeholder = { Text("10:00") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
                     value = venue,
                     onValueChange = { venue = it },
-                    label = { Text("Venue") },
-                    placeholder = { Text("Hall-A") },
+                    label = { Text("Venue (e.g. Hall-A)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -442,6 +595,13 @@ fun AddExamDialog(
                         onValueChange = { maxMarks = it },
                         label = { Text("Max Marks") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
@@ -449,6 +609,13 @@ fun AddExamDialog(
                         onValueChange = { targetMarks = it },
                         label = { Text("Target Marks") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -458,6 +625,13 @@ fun AddExamDialog(
                     onValueChange = { topicsString = it },
                     label = { Text("Topics (Comma separated)") },
                     placeholder = { Text("Arrays, Trees, DP") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -469,7 +643,7 @@ fun AddExamDialog(
                     val year = dateParts.getOrNull(0)?.toIntOrNull() ?: 2026
                     val month = (dateParts.getOrNull(1)?.toIntOrNull() ?: 8) - 1
                     val day = dateParts.getOrNull(2)?.toIntOrNull() ?: 28
-                    
+
                     val cal = Calendar.getInstance().apply {
                         set(year, month, day, 0, 0, 0)
                         set(Calendar.MILLISECOND, 0)
@@ -488,14 +662,16 @@ fun AddExamDialog(
                         initialTopicsList
                     )
                 },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp),
                 enabled = dateString.isNotBlank() && timeString.isNotBlank() && venue.isNotBlank()
             ) {
-                Text("Save")
+                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = SecondaryText)
             }
         }
     )

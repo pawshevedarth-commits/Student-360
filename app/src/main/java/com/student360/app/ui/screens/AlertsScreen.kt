@@ -1,3 +1,6 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.student360.app.ui.screens
 
 import androidx.compose.foundation.background
@@ -19,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.Alert
 import com.student360.app.data.local.entity.AlertType
 import com.student360.app.data.repository.StudentRepository
+import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,8 +37,9 @@ fun AlertsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(BgDark)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Quick control buttons
         Row(
@@ -42,26 +47,34 @@ fun AlertsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Recent Notifications", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Recent Notifications",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText
+            )
             Row {
                 TextButton(onClick = { viewModel.markAllAsRead() }) {
-                    Text("Read All")
+                    Text("Read All", color = LightPurple, style = MaterialTheme.typography.labelMedium)
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 TextButton(onClick = { viewModel.clearAll() }) {
-                    Text("Clear All")
+                    Text("Clear All", color = SecondaryText, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
 
         if (alerts.isEmpty()) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No notifications logged yet.", style = MaterialTheme.typography.bodyMedium)
-            }
+            EmptyStateView(
+                icon = Icons.Default.Notifications,
+                title = "No Notifications",
+                subtitle = "You are all caught up. No unread alerts at the moment.",
+                modifier = Modifier.weight(1f)
+            )
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(alerts) { alert ->
                     AlertRow(
@@ -84,12 +97,12 @@ fun AlertRow(
     }
 
     val typeColor = when (alert.type) {
-        AlertType.ATTENDANCE -> CriticalRed
+        AlertType.ATTENDANCE -> DangerRed
         AlertType.EXAM -> ExamPurple
-        AlertType.LECTURE -> MaterialTheme.colorScheme.primary
-        AlertType.ASSIGNMENT -> WarningYellow
-        AlertType.STUDY -> SafeGreen
-        AlertType.ACHIEVEMENT -> SafeGreen
+        AlertType.LECTURE -> LightPurple
+        AlertType.ASSIGNMENT -> WarningOrange
+        AlertType.STUDY -> SuccessGreen
+        AlertType.ACHIEVEMENT -> WarningOrange
     }
 
     val icon = when (alert.type) {
@@ -101,49 +114,50 @@ fun AlertRow(
         AlertType.ACHIEVEMENT -> Icons.Default.Star
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (alert.isRead) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.secondaryContainer
-        )
+    StudentCard(
+        backgroundColor = if (alert.isRead) CardDark else ElevatedCardDark,
+        borderColor = if (alert.isRead) BorderDark else PrimaryPurple.copy(alpha = 0.5f),
+        onClick = onClick
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .background(typeColor.copy(alpha = 0.1f), CircleShape),
+                    .background(typeColor.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = typeColor, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = typeColor, modifier = Modifier.size(18.dp))
             }
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     alert.title,
                     fontWeight = if (alert.isRead) FontWeight.Normal else FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = PrimaryText
                 )
                 Text(
                     alert.message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = SecondaryText
                 )
                 Text(
                     dateStr,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    color = SecondaryText.copy(alpha = 0.7f)
                 )
             }
             if (!alert.isRead) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .background(LightPurple, CircleShape)
                 )
             }
         }

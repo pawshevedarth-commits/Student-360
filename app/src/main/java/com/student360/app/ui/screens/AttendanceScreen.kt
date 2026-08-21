@@ -1,32 +1,41 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+@file:Suppress("UNUSED_PARAMETER")
+
 package com.student360.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.AttendanceStatus
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.data.repository.SubjectStats
+import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
 import kotlin.math.ceil
 import kotlin.math.floor
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttendanceScreen(
     repository: StudentRepository,
@@ -39,9 +48,27 @@ fun AttendanceScreen(
     var overrideSubject by remember { mutableStateOf<Subject?>(null) }
     var showAddSubjectDialog by remember { mutableStateOf(false) }
 
+    // Aggregate overall attendance
+    val totalAttended = remember(subjectsWithStats) { subjectsWithStats.sumOf { it.second.attended } }
+    val totalConducted = remember(subjectsWithStats) { subjectsWithStats.sumOf { it.second.attended + it.second.missed } }
+    val overallPercentage = remember(totalAttended, totalConducted) {
+        if (totalConducted > 0) (totalAttended.toDouble() / totalConducted.toDouble()) * 100.0 else 100.0
+    }
+    val overallStatusColor = when {
+        overallPercentage >= 75.0 -> SuccessGreen
+        overallPercentage >= 70.0 -> WarningOrange
+        else -> DangerRed
+    }
+
     Scaffold(
+        containerColor = BgDark,
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddSubjectDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddSubjectDialog = true },
+                containerColor = PrimaryPurple,
+                contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Subject")
             }
         }
@@ -50,47 +77,89 @@ fun AttendanceScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(BgDark)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                Card(
+                // Top Attendance Overview Hero Card
+                StudentCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    backgroundColor = CardDark,
+                    borderColor = overallStatusColor.copy(alpha = 0.35f)
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
                             Text(
-                                "Attendance Tracker",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                "Attendance Overview",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = SecondaryText
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                "Simulate and view statistics",
-                                style = MaterialTheme.typography.labelMedium
+                                "${String.format("%.1f", overallPercentage)}%",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = overallStatusColor
                             )
                         }
-                        Button(onClick = { showSimulator = true }) {
-                            Text("Simulator")
+                        Button(
+                            onClick = { showSimulator = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                            border = BorderStroke(1.dp, BorderDark),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Simulator ⚡", color = LightPurple, style = MaterialTheme.typography.labelMedium)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    StudentProgressBar(
+                        progress = (overallPercentage / 100.0).toFloat(),
+                        color = overallStatusColor,
+                        trackColor = SurfaceDark,
+                        height = 8.dp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "$totalAttended / $totalConducted total classes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SecondaryText
+                        )
+                        Text(
+                            "Target: 75%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = SecondaryText
+                        )
                     }
                 }
 
+                // Subject Cards List or Empty State
                 if (subjectsWithStats.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("No subjects found. Tap + to add a subject.")
-                    }
+                    EmptyStateView(
+                        icon = Icons.Default.CheckCircle,
+                        title = "No Subjects Added Yet",
+                        subtitle = "Track your attendance by adding your courses and academic subjects.",
+                        actionText = "+ Add First Subject",
+                        onActionClick = { showAddSubjectDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         items(subjectsWithStats) { (subject, stats) ->
                             SubjectAttendanceCard(
@@ -104,18 +173,20 @@ fun AttendanceScreen(
                 }
             }
 
+            // Attendance Simulator Dialog
             if (showSimulator && subjectsWithStats.isNotEmpty()) {
                 val subjects = subjectsWithStats.map { it.first }
                 val statsList = subjectsWithStats.map { it.second }
-                
+
                 AttendanceSimulatorDialog(
                     subjects = subjects,
                     statsList = statsList,
-                    initialSelectedIndex = selectedSubjectIndexForSim,
+                    initialSelectedIndex = selectedSubjectIndexForSim.coerceIn(0, subjects.size - 1),
                     onDismiss = { showSimulator = false }
                 )
             }
 
+            // Manual Override Dialog
             overrideSubject?.let { subject ->
                 val stats = subjectsWithStats.find { it.first.id == subject.id }?.second
                 ManualOverrideDialog(
@@ -133,6 +204,7 @@ fun AttendanceScreen(
                 )
             }
 
+            // Add Subject Dialog
             if (showAddSubjectDialog) {
                 AddSubjectDialog(
                     onDismiss = { showAddSubjectDialog = false },
@@ -155,103 +227,135 @@ fun SubjectAttendanceCard(
 ) {
     val diff = stats.percentage - subject.targetPercentage
     val statusColor = when {
-        diff >= 0 -> SafeGreen
-        diff >= -5.0 -> WarningYellow
-        else -> CriticalRed
+        diff >= 0 -> SuccessGreen
+        diff >= -5.0 -> WarningOrange
+        else -> DangerRed
+    }
+    val statusText = when {
+        diff >= 0 -> "Safe"
+        diff >= -5.0 -> "At Risk"
+        else -> "Critical"
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    StudentCard(
+        backgroundColor = CardDark,
+        borderColor = BorderDark
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        // Top Header: Subject info & status badge + edit button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Column {
-                    Text(
-                        subject.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Code: ${subject.code} • Faculty: ${subject.faculty}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onEdit) {
+                Text(
+                    subject.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    "Code: ${subject.code.ifBlank { "N/A" }} • ${subject.faculty.ifBlank { "Faculty" }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                StatusBadge(text = statusText, color = statusColor)
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                     Icon(
                         Icons.Default.Edit,
                         contentDescription = "Edit Baseline Override",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = SecondaryText,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
+        // Middle Row: Percentage & Class counts
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Column {
-                    Text(
-                        "${String.format("%.1f", stats.percentage)}%",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = statusColor
-                    )
-                    Text(
-                        "Target: ${subject.targetPercentage.toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        "${stats.attended} / ${(stats.attended + stats.missed)} classes",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Cancelled/Off: ${stats.off}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
+                Text(
+                    "${String.format("%.1f", stats.percentage)}%",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor
+                )
+                Text(
+                    "Target ${subject.targetPercentage.toInt()}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SecondaryText,
+                    modifier = Modifier.padding(bottom = 2.dp)
+                )
             }
+            Text(
+                "${stats.attended} / ${(stats.attended + stats.missed)} classes",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = PrimaryText
+            )
+        }
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        StudentProgressBar(
+            progress = (stats.percentage / 100.0).toFloat(),
+            color = statusColor,
+            trackColor = SurfaceDark,
+            height = 6.dp
+        )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Bottom Controls: Clean non-wrapping Present / Absent / Cancelled
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = { onMark(AttendanceStatus.PRESENT) },
+                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f).height(38.dp)
             ) {
-                Button(
-                    onClick = { onMark(AttendanceStatus.PRESENT) },
-                    colors = ButtonDefaults.buttonColors(containerColor = SafeGreen),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Present", color = Color.White)
-                }
-                Button(
-                    onClick = { onMark(AttendanceStatus.ABSENT) },
-                    colors = ButtonDefaults.buttonColors(containerColor = CriticalRed),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Absent", color = Color.White)
-                }
-                Button(
-                    onClick = { onMark(AttendanceStatus.OFF) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Cancelled", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text("✓ Present", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+            Button(
+                onClick = { onMark(AttendanceStatus.ABSENT) },
+                colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f).height(38.dp)
+            ) {
+                Text("× Absent", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+            Button(
+                onClick = { onMark(AttendanceStatus.OFF) },
+                colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
+                border = BorderStroke(1.dp, BorderDark),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1f).height(38.dp)
+            ) {
+                Text("— Off", color = SecondaryText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, maxLines = 1)
             }
         }
     }
@@ -287,20 +391,37 @@ fun AttendanceSimulatorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Attendance Simulator") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Attendance Simulator",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Subject Dropdown Selector
                 Box {
-                    OutlinedButton(onClick = { dropdownExpanded = true }) {
-                        Text("Subject: ${subject.name}")
+                    OutlinedButton(
+                        onClick = { dropdownExpanded = true },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryText),
+                        border = BorderStroke(1.dp, BorderDark),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Subject: ${subject.name}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }
                     DropdownMenu(
                         expanded = dropdownExpanded,
-                        onDismissRequest = { dropdownExpanded = false }
+                        onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.background(SurfaceDark)
                     ) {
                         subjects.forEachIndexed { index, sub ->
                             DropdownMenuItem(
-                                text = { Text(sub.name) },
+                                text = { Text(sub.name, color = PrimaryText) },
                                 onClick = {
                                     selectedIndex = index
                                     dropdownExpanded = false
@@ -310,63 +431,100 @@ fun AttendanceSimulatorDialog(
                     }
                 }
 
-                Text("Simulate Future Classes:", fontWeight = FontWeight.Bold)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Simulate Future Classes:", style = MaterialTheme.typography.labelMedium, color = SecondaryText)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = futureAttendStr,
                         onValueChange = { futureAttendStr = it },
-                        label = { Text("Attend") },
+                        label = { Text("Attend (+)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SuccessGreen,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = futureMissStr,
                         onValueChange = { futureMissStr = it },
-                        label = { Text("Miss") },
+                        label = { Text("Miss (-)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = DangerRed,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier.fillMaxWidth()
+                // Projected Comparison Card
+                ElevatedStudentCard(
+                    backgroundColor = CardDark,
+                    borderColor = if (simulatedPercentage >= subject.targetPercentage) SuccessGreen.copy(alpha = 0.4f) else DangerRed.copy(alpha = 0.4f)
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        "Projected Attendance",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SecondaryText
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
-                            "Simulated Percentage: ${String.format("%.1f", simulatedPercentage)}%",
-                            fontWeight = FontWeight.Bold,
+                            "${String.format("%.1f", stats.percentage)}%",
                             style = MaterialTheme.typography.titleMedium,
-                            color = if (simulatedPercentage >= subject.targetPercentage) SafeGreen else CriticalRed
+                            color = SecondaryText
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("➔", style = MaterialTheme.typography.titleMedium, color = LightPurple)
                         Text(
-                            "Projected classes: $newAttended attended / $newConducted conducted",
-                            style = MaterialTheme.typography.bodySmall
+                            "${String.format("%.1f", simulatedPercentage)}%",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (simulatedPercentage >= subject.targetPercentage) SuccessGreen else DangerRed
                         )
+                    }
+                    Text(
+                        "$newAttended attended / $newConducted conducted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SecondaryText
+                    )
 
-                        Spacer(modifier = Modifier.height(8.dp))
-                        val currentConducted = stats.attended + stats.missed
-                        if (simulatedPercentage < subject.targetPercentage) {
-                            val classesNeeded = ceil((subject.targetPercentage / 100.0 * newConducted - newAttended) / (1.0 - subject.targetPercentage / 100.0)).toInt().coerceAtLeast(0)
-                            Text(
-                                "👉 Attend next $classesNeeded classes consecutively to reach ${subject.targetPercentage.toInt()}%.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        } else {
-                            val classesCanMiss = floor((newAttended - subject.targetPercentage / 100.0 * newConducted) / (subject.targetPercentage / 100.0)).toInt().coerceAtLeast(0)
-                            Text(
-                                "👉 Safe! You can miss next $classesCanMiss classes consecutively and remain above target.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (simulatedPercentage < subject.targetPercentage) {
+                        val classesNeeded = ceil((subject.targetPercentage / 100.0 * newConducted - newAttended) / (1.0 - subject.targetPercentage / 100.0)).toInt().coerceAtLeast(0)
+                        Text(
+                            "👉 Attend next $classesNeeded classes consecutively to reach ${subject.targetPercentage.toInt()}%.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DangerRed,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        val classesCanMiss = floor((newAttended - subject.targetPercentage / 100.0 * newConducted) / (subject.targetPercentage / 100.0)).toInt().coerceAtLeast(0)
+                        Text(
+                            "👉 Safe! You can miss next $classesCanMiss classes consecutively and stay above target.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SuccessGreen,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) {
-                Text("Close")
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Close", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     )
@@ -388,16 +546,36 @@ fun ManualOverrideDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Subject Settings & Baseline") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Subject Settings & Baseline",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Edit Baseline Override totals for ${subject.name}:")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(
+                    "Edit baseline totals for ${subject.name}:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SecondaryText
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = attendedStr,
                         onValueChange = { attendedStr = it },
                         label = { Text("Attended") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
@@ -405,21 +583,35 @@ fun ManualOverrideDialog(
                         onValueChange = { conductedStr = it },
                         label = { Text("Conducted") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryPurple,
+                            unfocusedBorderColor = BorderDark,
+                            focusedTextColor = PrimaryText,
+                            unfocusedTextColor = PrimaryText
+                        ),
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Set Attendance Target (%):", fontWeight = FontWeight.Bold)
+                Text("Target Attendance %:", style = MaterialTheme.typography.labelMedium, color = SecondaryText)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(75.0, 80.0, 85.0, 90.0).forEach { target ->
+                        val isSel = targetVal == target
                         FilterChip(
-                            selected = targetVal == target,
+                            selected = isSel,
                             onClick = {
                                 targetVal = target
                                 onUpdateTarget(target)
                             },
-                            label = { Text("${target.toInt()}%") }
+                            label = { Text("${target.toInt()}%") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = PrimaryPurple,
+                                selectedLabelColor = Color.White,
+                                containerColor = CardDark,
+                                labelColor = SecondaryText
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(borderColor = BorderDark)
                         )
                     }
                 }
@@ -431,14 +623,16 @@ fun ManualOverrideDialog(
                     val att = attendedStr.toIntOrNull() ?: currentAttended
                     val cond = conductedStr.toIntOrNull() ?: currentConducted
                     onSave(att, cond)
-                }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Save")
+                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = SecondaryText)
             }
         }
     )
@@ -456,13 +650,71 @@ fun AddSubjectDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add New Subject") },
+        containerColor = SurfaceDark,
+        titleContentColor = PrimaryText,
+        textContentColor = PrimaryText,
+        title = {
+            Text(
+                "Add New Subject",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Subject Name") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Subject Code") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = faculty, onValueChange = { faculty = it }, label = { Text("Faculty Name") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = targetStr, onValueChange = { targetStr = it }, label = { Text("Target Attendance %") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Subject Name (e.g. DBMS)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it },
+                    label = { Text("Subject Code (optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = faculty,
+                    onValueChange = { faculty = it },
+                    label = { Text("Faculty Name (optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = targetStr,
+                    onValueChange = { targetStr = it },
+                    label = { Text("Target Attendance %") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryPurple,
+                        unfocusedBorderColor = BorderDark,
+                        focusedTextColor = PrimaryText,
+                        unfocusedTextColor = PrimaryText
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
@@ -472,14 +724,16 @@ fun AddSubjectDialog(
                         onSave(name, code, faculty, targetStr.toDoubleOrNull() ?: 75.0)
                     }
                 },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                shape = RoundedCornerShape(10.dp),
                 enabled = name.isNotBlank()
             ) {
-                Text("Add")
+                Text("Add", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = SecondaryText)
             }
         }
     )
