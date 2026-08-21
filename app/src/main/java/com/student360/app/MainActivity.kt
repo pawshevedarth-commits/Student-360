@@ -262,7 +262,7 @@ fun MainShell(repository: StudentRepository) {
                 Crossfade(targetState = currentScreen, label = "screen_crossfade") { screen ->
                     when (screen) {
                         Screen.HOME -> HomeScreen(repository = repository, onNavigate = { currentScreen = it })
-                        Screen.ATTENDANCE -> AttendanceScreen(repository)
+                        Screen.ATTENDANCE -> AttendanceScreen(repository = repository, onNavigateToSettings = { currentScreen = Screen.SETTINGS })
                         Screen.SCHEDULE -> ScheduleScreen(repository)
                         Screen.MY_DAY -> MyDayScreen(repository)
                         Screen.STUDY -> StudyScreen(repository)

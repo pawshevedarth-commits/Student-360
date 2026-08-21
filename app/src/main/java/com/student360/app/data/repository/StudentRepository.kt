@@ -37,6 +37,9 @@ class StudentRepository(context: Context) {
     suspend fun insertAttendance(record: AttendanceRecord) = subjectDao.insertAttendance(record)
     suspend fun deleteAttendanceById(id: Int) = subjectDao.deleteAttendanceById(id)
     suspend fun getAttendanceForDate(date: Long): List<AttendanceRecord> = subjectDao.getAttendanceForDate(date)
+    suspend fun deleteAttendanceForDate(date: Long) = subjectDao.deleteAttendanceForDate(date)
+    suspend fun deleteAttendanceForSubjectAndDate(subjectId: Int, date: Long) = subjectDao.deleteAttendanceForSubjectAndDate(subjectId, date)
+    suspend fun getAttendanceBetweenDates(startDate: Long, endDate: Long): List<AttendanceRecord> = subjectDao.getAttendanceBetweenDates(startDate, endDate)
 
     // Timetable Methods
     val timetableFlow: Flow<List<TimetableEntry>> = timetableDao.getAllTimetableFlow()

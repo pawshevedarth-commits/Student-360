@@ -52,4 +52,13 @@ interface SubjectDao {
 
     @Query("DELETE FROM attendance_records WHERE id = :id")
     suspend fun deleteAttendanceById(id: Int)
+
+    @Query("DELETE FROM attendance_records WHERE date = :date")
+    suspend fun deleteAttendanceForDate(date: Long)
+
+    @Query("DELETE FROM attendance_records WHERE date = :date AND subjectId = :subjectId")
+    suspend fun deleteAttendanceForSubjectAndDate(subjectId: Int, date: Long)
+
+    @Query("SELECT * FROM attendance_records WHERE date >= :startDate AND date <= :endDate ORDER BY date ASC")
+    suspend fun getAttendanceBetweenDates(startDate: Long, endDate: Long): List<AttendanceRecord>
 }
