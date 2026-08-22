@@ -39,6 +39,7 @@ fun MyDayScreen(
     repository: StudentRepository,
     viewModel: MyDayViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val myDayItems by viewModel.myDayItems.collectAsState()
     val progress by viewModel.completionPercentage.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
@@ -47,7 +48,7 @@ fun MyDayScreen(
     var showAddAssignDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        containerColor = BgDark,
+        containerColor = colors.bg,
         floatingActionButton = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -55,8 +56,8 @@ fun MyDayScreen(
             ) {
                 FloatingActionButton(
                     onClick = { showAddTaskDialog = true },
-                    containerColor = ElevatedCardDark,
-                    contentColor = LightPurple,
+                    containerColor = colors.elevatedCard,
+                    contentColor = colors.accent,
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Row(
@@ -71,7 +72,7 @@ fun MyDayScreen(
                 if (subjects.isNotEmpty()) {
                     FloatingActionButton(
                         onClick = { showAddAssignDialog = true },
-                        containerColor = PrimaryPurple,
+                        containerColor = colors.accent,
                         contentColor = Color.White,
                         shape = RoundedCornerShape(14.dp)
                     ) {
@@ -92,7 +93,7 @@ fun MyDayScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(BgDark)
+                .background(colors.bg)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

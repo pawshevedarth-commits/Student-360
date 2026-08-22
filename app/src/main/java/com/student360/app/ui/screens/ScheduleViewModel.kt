@@ -81,7 +81,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         endTime: String,
         room: String,
         facultyOverride: String?,
-        notifyMinutesBefore: Int? // If null, do not notify
+        notifyMinutesBefore: Int? = 10
     ) {
         viewModelScope.launch {
             val entry = TimetableEntry(
@@ -93,7 +93,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 facultyOverride = facultyOverride
             )
             repository.insertTimetable(entry)
-            
+
             val updatedList = repository.getAllTimetable()
             val savedEntry = updatedList.find {
                 it.subjectId == subjectId && it.dayOfWeek == dayOfWeek && it.startTime == startTime
@@ -112,6 +112,19 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun updateTimetableEntry(entry: TimetableEntry) {
+        viewModelScope.launch {
+            repository.updateTimetable(entry)
+        }
+    }
+
+    fun updateEntrySubject(entry: TimetableEntry, newSubjectId: Int) {
+        viewModelScope.launch {
+            val updated = entry.copy(subjectId = newSubjectId)
+            repository.updateTimetable(updated)
+        }
+    }
+
     fun deleteTimetableEntry(entry: TimetableEntry) {
         viewModelScope.launch {
             NotificationScheduler.cancelLectureAlarm(getApplication(), entry.id)
@@ -126,7 +139,6 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             if (index < dayEntries.size) {
                 val current = dayEntries[index]
                 val prev = dayEntries[index - 1]
-                // Swap their start and end times
                 val updatedCurrent = current.copy(startTime = prev.startTime, endTime = prev.endTime)
                 val updatedPrev = prev.copy(startTime = current.startTime, endTime = current.endTime)
                 repository.updateTimetable(updatedCurrent)
@@ -141,11 +153,39 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             if (index in 0 until dayEntries.size - 1) {
                 val current = dayEntries[index]
                 val next = dayEntries[index + 1]
-                // Swap their start and end times
                 val updatedCurrent = current.copy(startTime = next.startTime, endTime = next.endTime)
                 val updatedNext = next.copy(startTime = current.startTime, endTime = current.endTime)
                 repository.updateTimetable(updatedCurrent)
                 repository.updateTimetable(updatedNext)
+            }
+        }
+    }
+
+    fun reorderDayEntries(dayOfWeek: Int, fromIndex: Int, toIndex: Int) {
+        if (fromIndex == toIndex) return
+        viewModelScope.launch {
+            val dayEntries = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }.toMutableList()
+            if (fromIndex in dayEntries.indices && toIndex in dayEntries.indices) {
+                val item = dayEntries.removeAt(fromIndex)
+                dayEntries.add(toIndex, item)
+
+                // Reassign time slots sequentially
+                val standardTimes = listOf(
+                    "09:00" to "10:00",
+                    "10:00" to "11:00",
+                    "11:00" to "12:00",
+                    "12:00" to "13:00",
+                    "14:00" to "15:00",
+                    "15:00" to "16:00",
+                    "16:00" to "17:00"
+                )
+
+                dayEntries.forEachIndexed { i, entry ->
+                    val (start, end) = standardTimes.getOrElse(i) {
+                        "${9 + i}:00" to "${10 + i}:00"
+                    }
+                    repository.updateTimetable(entry.copy(startTime = start, endTime = end))
+                }
             }
         }
     }

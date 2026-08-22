@@ -35,6 +35,7 @@ fun ProgressScreen(
     repository: StudentRepository,
     viewModel: ProgressViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val records by viewModel.attendanceRecords.collectAsState()
     val collegeDays by viewModel.collegeDays.collectAsState()
     val trendsText by viewModel.trendsText.collectAsState()
@@ -49,7 +50,7 @@ fun ProgressScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(colors.bg)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

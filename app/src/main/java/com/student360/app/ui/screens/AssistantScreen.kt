@@ -30,6 +30,7 @@ fun AssistantScreen(
     repository: StudentRepository,
     viewModel: AssistantViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val candidates by viewModel.candidates.collectAsState()
     val schedule by viewModel.plannedSchedule.collectAsState()
 
@@ -38,7 +39,7 @@ fun AssistantScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(colors.bg)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

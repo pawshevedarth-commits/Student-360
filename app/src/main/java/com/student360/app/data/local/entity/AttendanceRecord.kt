@@ -29,5 +29,11 @@ data class AttendanceRecord(
     val date: Long, // Epoch timestamp (ms) for the date of the record
     val status: AttendanceStatus,
     val isExtra: Boolean = false,
-    val timetableId: Int? = null // Link to scheduled timetable entry if applicable
+    val timetableId: Int? = null, // Link to scheduled timetable entry if applicable
+    val officialStatus: String = "Not verified",
+    val notes: String? = null,
+    val startTime: String? = null,
+    val endTime: String? = null,
+    val room: String? = null,
+    val faculty: String? = null
 )

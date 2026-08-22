@@ -10,6 +10,7 @@ class StudentRepository(context: Context) {
     private val db = Student360Database.getDatabase(context)
     private val profileDao = db.profileDao()
     private val subjectDao = db.subjectDao()
+    private val attendanceHistoryDao = db.attendanceHistoryDao()
     private val timetableDao = db.timetableDao()
     private val examDao = db.examDao()
     private val taskDao = db.taskDao()
@@ -33,13 +34,26 @@ class StudentRepository(context: Context) {
     // Attendance Methods
     val allAttendanceFlow: Flow<List<AttendanceRecord>> = subjectDao.getAllAttendanceFlow()
     suspend fun getAllAttendance(): List<AttendanceRecord> = subjectDao.getAllAttendance()
+    fun getAttendanceForSubjectFlow(subjectId: Int): Flow<List<AttendanceRecord>> = subjectDao.getAttendanceForSubjectFlow(subjectId)
     suspend fun getAttendanceForSubject(subjectId: Int): List<AttendanceRecord> = subjectDao.getAttendanceForSubject(subjectId)
-    suspend fun insertAttendance(record: AttendanceRecord) = subjectDao.insertAttendance(record)
+    suspend fun insertAttendance(record: AttendanceRecord): Long = subjectDao.insertAttendance(record)
+    suspend fun updateAttendance(record: AttendanceRecord) = subjectDao.updateAttendance(record)
+    suspend fun deleteAttendance(record: AttendanceRecord) = subjectDao.deleteAttendance(record)
     suspend fun deleteAttendanceById(id: Int) = subjectDao.deleteAttendanceById(id)
     suspend fun getAttendanceForDate(date: Long): List<AttendanceRecord> = subjectDao.getAttendanceForDate(date)
     suspend fun deleteAttendanceForDate(date: Long) = subjectDao.deleteAttendanceForDate(date)
     suspend fun deleteAttendanceForSubjectAndDate(subjectId: Int, date: Long) = subjectDao.deleteAttendanceForSubjectAndDate(subjectId, date)
     suspend fun getAttendanceBetweenDates(startDate: Long, endDate: Long): List<AttendanceRecord> = subjectDao.getAttendanceBetweenDates(startDate, endDate)
+
+    // Attendance History & Audit Methods
+    val allHistoryFlow: Flow<List<AttendanceHistory>> = attendanceHistoryDao.getAllHistoryFlow()
+    fun getHistoryForSubjectFlow(subjectId: Int): Flow<List<AttendanceHistory>> = attendanceHistoryDao.getHistoryForSubjectFlow(subjectId)
+    suspend fun getHistoryForSubject(subjectId: Int): List<AttendanceHistory> = attendanceHistoryDao.getHistoryForSubject(subjectId)
+    suspend fun getHistoryForDate(date: Long): List<AttendanceHistory> = attendanceHistoryDao.getHistoryForDate(date)
+    suspend fun insertHistory(history: AttendanceHistory): Long = attendanceHistoryDao.insertHistory(history)
+    suspend fun deleteHistory(history: AttendanceHistory) = attendanceHistoryDao.deleteHistory(history)
+    suspend fun deleteHistoryById(id: Int) = attendanceHistoryDao.deleteHistoryById(id)
+    suspend fun getLatestHistoryForRecord(subjectId: Int, date: Long): AttendanceHistory? = attendanceHistoryDao.getLatestHistoryForRecord(subjectId, date)
 
     // Timetable Methods
     val timetableFlow: Flow<List<TimetableEntry>> = timetableDao.getAllTimetableFlow()

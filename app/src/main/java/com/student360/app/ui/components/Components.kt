@@ -5,11 +5,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -29,7 +31,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.student360.app.ui.theme.*
+import java.util.Locale
 
 /**
  * Official Student360 Emblem branding symbol.
@@ -132,6 +136,7 @@ fun Student360Logo(
     showWordmark: Boolean = true,
     tagline: String? = null
 ) {
+    val colors = LocalAppColors.current
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -145,7 +150,7 @@ fun Student360Logo(
                         text = "Student",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryText
+                        color = colors.textPrimary
                     )
                     Text(
                         text = "360",
@@ -158,7 +163,8 @@ fun Student360Logo(
                     Text(
                         text = tagline,
                         style = MaterialTheme.typography.labelSmall,
-                        color = SecondaryText
+                        color = colors.textSecondary,
+                        fontSize = 10.sp
                     )
                 }
             }
@@ -167,13 +173,13 @@ fun Student360Logo(
 }
 
 /**
- * Standard Student360 Card with 16dp rounded corners and subtle border.
+ * Standard Student360 Card with 16dp rounded corners and subtle dynamic theme border.
  */
 @Composable
 fun StudentCard(
     modifier: Modifier = Modifier,
-    backgroundColor: Color = CardDark,
-    borderColor: Color = BorderDark,
+    backgroundColor: Color = LocalAppColors.current.card,
+    borderColor: Color = LocalAppColors.current.border,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -192,13 +198,13 @@ fun StudentCard(
 }
 
 /**
- * Elevated Student360 Card with 16dp rounded corners and higher contrast background.
+ * Elevated Student360 Card with 16dp rounded corners and dynamic elevated background.
  */
 @Composable
 fun ElevatedStudentCard(
     modifier: Modifier = Modifier,
-    backgroundColor: Color = ElevatedCardDark,
-    borderColor: Color = BorderDark.copy(alpha = 0.8f),
+    backgroundColor: Color = LocalAppColors.current.elevatedCard,
+    borderColor: Color = LocalAppColors.current.border,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -212,14 +218,281 @@ fun ElevatedStudentCard(
 }
 
 /**
+ * Standardized Top App Header across screens (matching reference: Student360 | 57.41 | 75 | +)
+ */
+@Composable
+fun StudentScreenHeader(
+    title: String = "Student360",
+    overallPercentage: Double = 100.0,
+    targetPercentage: Int = 75,
+    onAddClick: (() -> Unit)? = null,
+    extraAction: (@Composable () -> Unit)? = null
+) {
+    val colors = LocalAppColors.current
+    val statusColor = when {
+        overallPercentage >= targetPercentage -> colors.success
+        overallPercentage >= targetPercentage - 5.0 -> colors.warning
+        else -> colors.danger
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
+            fontSize = 20.sp
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Pill Badge: 57.41 | 75
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = colors.card,
+                border = BorderStroke(1.dp, colors.border)
+            ) {
+                Text(
+                    text = "${String.format(Locale.US, "%.2f", overallPercentage)} | $targetPercentage",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+
+            extraAction?.invoke()
+
+            if (onAddClick != null) {
+                IconButton(
+                    onClick = onAddClick,
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(colors.card)
+                        .border(BorderStroke(1.dp, colors.border), CircleShape)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add",
+                        tint = colors.textPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Attendance Fractional Circular Badge (Matching reference card: 41.67 / 75)
+ */
+@Composable
+fun AttendanceFractionBadge(
+    percentage: Double,
+    target: Int = 75,
+    statusColor: Color = LocalAppColors.current.success,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalAppColors.current
+    Box(
+        modifier = modifier
+            .size(54.dp)
+            .clip(CircleShape)
+            .background(colors.elevatedCard)
+            .border(BorderStroke(1.dp, colors.border), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = String.format(Locale.US, "%.2f", percentage),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = statusColor,
+                fontSize = 11.sp,
+                lineHeight = 12.sp
+            )
+            Box(
+                modifier = Modifier
+                    .width(28.dp)
+                    .height(1.dp)
+                    .background(colors.border)
+                    .padding(vertical = 1.dp)
+            )
+            Text(
+                text = "$target",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.textSecondary,
+                fontSize = 10.sp,
+                lineHeight = 11.sp
+            )
+        }
+    }
+}
+
+/**
+ * Standardized Quick Round Attendance Control (⊘, —, ✕, ✓)
+ */
+@Composable
+fun QuickAttendanceRoundButton(
+    symbol: String,
+    isSelected: Boolean,
+    activeColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Dp = 28.dp
+) {
+    val colors = LocalAppColors.current
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(if (isSelected) activeColor else colors.elevatedCard)
+            .border(
+                BorderStroke(1.dp, if (isSelected) activeColor else colors.border),
+                CircleShape
+            )
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = symbol,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) Color.White else colors.textSecondary.copy(alpha = 0.8f),
+            fontSize = if (symbol == "—") 14.sp else 12.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Standardized Day Status Banner (Missed / Attended / Off / Clear)
+ */
+@Composable
+fun DayStatusBanner(
+    statusTitle: String,
+    statusDotColor: Color,
+    onClearAll: () -> Unit,
+    onMarkAllOff: () -> Unit,
+    onMarkAllMissed: () -> Unit,
+    onMarkAllAttended: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalAppColors.current
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = colors.elevatedCard,
+        border = BorderStroke(1.dp, colors.border),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(statusDotColor, CircleShape)
+                )
+                Column {
+                    Text(
+                        text = "Day status:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        fontSize = 11.sp
+                    )
+                    Text(
+                        text = statusTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        fontSize = 15.sp
+                    )
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    QuickAttendanceRoundButton(
+                        symbol = "⊘",
+                        isSelected = false,
+                        activeColor = colors.textSecondary,
+                        onClick = onClearAll
+                    )
+                    Text("Clear", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    QuickAttendanceRoundButton(
+                        symbol = "—",
+                        isSelected = false,
+                        activeColor = colors.warning,
+                        onClick = onMarkAllOff
+                    )
+                    Text("Off", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    QuickAttendanceRoundButton(
+                        symbol = "✕",
+                        isSelected = false,
+                        activeColor = colors.danger,
+                        onClick = onMarkAllMissed
+                    )
+                    Text("Miss", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
+                }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    QuickAttendanceRoundButton(
+                        symbol = "✓",
+                        isSelected = false,
+                        activeColor = colors.success,
+                        onClick = onMarkAllAttended
+                    )
+                    Text("Att", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
+                }
+            }
+        }
+    }
+}
+
+/**
  * Modern Progress Bar with smooth animated progress and rounded ends.
  */
 @Composable
 fun StudentProgressBar(
     progress: Float,
     modifier: Modifier = Modifier,
-    color: Color = PrimaryPurple,
-    trackColor: Color = SurfaceDark,
+    color: Color = LocalAppColors.current.accent,
+    trackColor: Color = LocalAppColors.current.elevatedCard,
     height: Dp = 8.dp
 ) {
     val animatedProgress by animateFloatAsState(
@@ -294,6 +567,7 @@ fun SectionHeader(
     actionText: String? = null,
     onActionClick: (() -> Unit)? = null
 ) {
+    val colors = LocalAppColors.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -303,7 +577,7 @@ fun SectionHeader(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = PrimaryText
+            color = colors.textPrimary
         )
         if (actionText != null && onActionClick != null) {
             TextButton(
@@ -313,7 +587,7 @@ fun SectionHeader(
                 Text(
                     text = actionText,
                     style = MaterialTheme.typography.labelMedium,
-                    color = LightPurple,
+                    color = colors.accent,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -333,6 +607,7 @@ fun EmptyStateView(
     actionText: String? = null,
     onActionClick: (() -> Unit)? = null
 ) {
+    val colors = LocalAppColors.current
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -343,14 +618,14 @@ fun EmptyStateView(
         Box(
             modifier = Modifier
                 .size(64.dp)
-                .background(SurfaceDark, CircleShape)
+                .background(colors.elevatedCard, CircleShape)
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = LightPurple,
+                tint = colors.accent,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -359,14 +634,14 @@ fun EmptyStateView(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = PrimaryText,
+            color = colors.textPrimary,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = SecondaryText,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -374,7 +649,7 @@ fun EmptyStateView(
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onActionClick,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(text = actionText, color = Color.White, fontWeight = FontWeight.SemiBold)

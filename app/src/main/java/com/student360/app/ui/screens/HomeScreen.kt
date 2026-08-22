@@ -3,6 +3,7 @@
 
 package com.student360.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -36,6 +37,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onNavigate: (Screen) -> Unit = {}
 ) {
+    val colors = LocalAppColors.current
     val profile by viewModel.profile.collectAsState()
     val stats by viewModel.overallStats.collectAsState()
     val nextLect by viewModel.nextLecture.collectAsState()
@@ -58,9 +60,9 @@ fun HomeScreen(
 
     val attPct = stats?.percentage ?: 100.0
     val attColor = when {
-        attPct >= 75.0 -> SuccessGreen
-        attPct >= 70.0 -> WarningOrange
-        else -> DangerRed
+        attPct >= 75.0 -> colors.success
+        attPct >= 70.0 -> colors.warning
+        else -> colors.danger
     }
     val attStatusText = when {
         attPct >= 75.0 -> "Safe"
@@ -71,6 +73,7 @@ fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(colors.bg)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -81,19 +84,19 @@ fun HomeScreen(
                 text = "$greeting, ${profile?.name ?: "Student"} 👋",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = PrimaryText
+                color = colors.textPrimary
             )
             Text(
                 text = formattedDate,
                 style = MaterialTheme.typography.bodyMedium,
-                color = SecondaryText
+                color = colors.textSecondary
             )
         }
 
         // Hero Attendance Card
         StudentCard(
             onClick = { onNavigate(Screen.ATTENDANCE) },
-            backgroundColor = CardDark,
+            backgroundColor = colors.card,
             borderColor = attColor.copy(alpha = 0.35f)
         ) {
             Row(
@@ -105,7 +108,7 @@ fun HomeScreen(
                     Text(
                         text = "Overall Attendance",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = SecondaryText
+                        color = colors.textSecondary
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -125,7 +128,7 @@ fun HomeScreen(
             StudentProgressBar(
                 progress = (attPct / 100.0).toFloat(),
                 color = attColor,
-                trackColor = SurfaceDark,
+                trackColor = colors.elevatedCard,
                 height = 8.dp
             )
             Spacer(modifier = Modifier.height(10.dp))
@@ -137,13 +140,13 @@ fun HomeScreen(
                 Text(
                     text = stats?.let { "${it.totalAttended} / ${it.totalConducted} classes" } ?: "0 classes",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = colors.textSecondary
                 )
                 Text(
                     text = "Target: 75%",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Medium,
-                    color = SecondaryText
+                    color = colors.textSecondary
                 )
             }
         }
@@ -156,18 +159,20 @@ fun HomeScreen(
             // Study Streak Card
             StudentCard(
                 modifier = Modifier.weight(1f),
-                onClick = { onNavigate(Screen.STUDY) }
+                onClick = { onNavigate(Screen.STUDY) },
+                backgroundColor = colors.card,
+                borderColor = colors.border
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Study Streak", style = MaterialTheme.typography.labelMedium, color = SecondaryText)
+                    Text("Study Streak", style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
                     Box(
                         modifier = Modifier
                             .size(28.dp)
-                            .background(WarningOrange.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                            .background(colors.warning.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("🔥", style = MaterialTheme.typography.bodySmall)
@@ -178,33 +183,35 @@ fun HomeScreen(
                     text = "$streak Days",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryText
+                    color = colors.textPrimary
                 )
                 Text(
                     text = "Keep it going!",
                     style = MaterialTheme.typography.labelSmall,
-                    color = SecondaryText
+                    color = colors.textSecondary
                 )
             }
 
             // Pending Tasks Card
             StudentCard(
                 modifier = Modifier.weight(1f),
-                onClick = { onNavigate(Screen.MY_DAY) }
+                onClick = { onNavigate(Screen.MY_DAY) },
+                backgroundColor = colors.card,
+                borderColor = colors.border
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Pending Tasks", style = MaterialTheme.typography.labelMedium, color = SecondaryText)
+                    Text("Pending Tasks", style = MaterialTheme.typography.labelMedium, color = colors.textSecondary)
                     Box(
                         modifier = Modifier
                             .size(28.dp)
-                            .background(LightPurple.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                            .background(colors.accent.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = LightPurple, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Check, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -212,12 +219,12 @@ fun HomeScreen(
                     text = "$tasksCount Tasks",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryText
+                    color = colors.textPrimary
                 )
                 Text(
                     text = "View tasks →",
                     style = MaterialTheme.typography.labelSmall,
-                    color = LightPurple,
+                    color = colors.accent,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -225,7 +232,9 @@ fun HomeScreen(
 
         // Next Lecture Card
         StudentCard(
-            onClick = { onNavigate(Screen.SCHEDULE) }
+            onClick = { onNavigate(Screen.ATTENDANCE) },
+            backgroundColor = colors.card,
+            borderColor = colors.border
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -240,22 +249,22 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .background(PrimaryPurple.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                            .background(colors.accent.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.DateRange, contentDescription = null, tint = LightPurple, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.DateRange, contentDescription = null, tint = colors.accent, modifier = Modifier.size(20.dp))
                     }
                     Column {
                         Text(
                             text = "Next Lecture",
                             style = MaterialTheme.typography.labelSmall,
-                            color = SecondaryText
+                            color = colors.textSecondary
                         )
                         Text(
                             text = nextLect?.second?.name ?: "No lecture right now",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = PrimaryText,
+                            color = colors.textPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -265,7 +274,7 @@ fun HomeScreen(
                     text = if (nextLect != null) countdown else "All done",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (nextLect != null) LightPurple else SecondaryText
+                    color = if (nextLect != null) colors.accent else colors.textSecondary
                 )
             }
         }
@@ -311,8 +320,8 @@ fun HomeScreen(
         // Attendance Below Target Alert Card
         if (attPct < 75.0) {
             StudentCard(
-                backgroundColor = Color(0xFF28181B),
-                borderColor = DangerRed.copy(alpha = 0.5f),
+                backgroundColor = if (colors.isDark) Color(0xFF28181B) else Color(0xFFFFEBEE),
+                borderColor = colors.danger.copy(alpha = 0.5f),
                 onClick = { onNavigate(Screen.ATTENDANCE) }
             ) {
                 Row(
@@ -323,28 +332,28 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .background(DangerRed.copy(alpha = 0.2f), CircleShape),
+                            .background(colors.danger.copy(alpha = 0.2f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = DangerRed, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = colors.danger, modifier = Modifier.size(20.dp))
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Attendance below target",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = DangerRed
+                            color = colors.danger
                         )
                         Text(
                             text = "Your overall attendance is ${String.format("%.1f", attPct)}%. Target: 75%.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = SecondaryText
+                            color = colors.textSecondary
                         )
                     }
                     Text(
                         text = "View →",
                         style = MaterialTheme.typography.labelSmall,
-                        color = DangerRed,
+                        color = colors.danger,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -360,12 +369,13 @@ fun QuickActionButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val colors = LocalAppColors.current
     Surface(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .clickable { onClick() },
-        color = CardDark,
-        border = androidx.compose.foundation.BorderStroke(1.dp, BorderDark),
+        color = colors.card,
+        border = BorderStroke(1.dp, colors.border),
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(
@@ -376,20 +386,20 @@ fun QuickActionButton(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .background(SurfaceDark, CircleShape),
+                    .background(colors.elevatedCard, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     icon,
                     contentDescription = label,
-                    tint = LightPurple,
+                    tint = colors.accent,
                     modifier = Modifier.size(18.dp)
                 )
             }
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
-                color = PrimaryText,
+                color = colors.textPrimary,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

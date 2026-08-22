@@ -3,18 +3,21 @@
 
 package com.student360.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,12 +35,13 @@ fun AlertsScreen(
     repository: StudentRepository,
     viewModel: AlertsViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val alerts by viewModel.alerts.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark)
+            .background(colors.bg)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -51,15 +55,15 @@ fun AlertsScreen(
                 "Recent Notifications",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = PrimaryText
+                color = colors.textPrimary
             )
             Row {
                 TextButton(onClick = { viewModel.markAllAsRead() }) {
-                    Text("Read All", color = LightPurple, style = MaterialTheme.typography.labelMedium)
+                    Text("Read All", color = colors.accent, style = MaterialTheme.typography.labelMedium)
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 TextButton(onClick = { viewModel.clearAll() }) {
-                    Text("Clear All", color = SecondaryText, style = MaterialTheme.typography.labelMedium)
+                    Text("Clear All", color = colors.textSecondary, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -92,35 +96,31 @@ fun AlertRow(
     alert: Alert,
     onClick: () -> Unit
 ) {
+    val colors = LocalAppColors.current
     val dateStr = remember(alert.timestamp) {
         SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(alert.timestamp))
     }
 
     val typeColor = when (alert.type) {
-        AlertType.ATTENDANCE -> DangerRed
-        AlertType.EXAM -> ExamPurple
-        AlertType.LECTURE -> LightPurple
-        AlertType.ASSIGNMENT -> WarningOrange
-        AlertType.STUDY -> SuccessGreen
-        AlertType.ACHIEVEMENT -> WarningOrange
+        AlertType.ATTENDANCE -> colors.danger
+        AlertType.EXAM -> colors.warning
+        AlertType.LECTURE -> colors.accent
+        AlertType.ASSIGNMENT -> colors.warning
+        AlertType.STUDY -> colors.accent
+        AlertType.ACHIEVEMENT -> colors.success
     }
 
-    val icon = when (alert.type) {
-        AlertType.ATTENDANCE -> Icons.Default.Warning
-        AlertType.EXAM -> Icons.Default.DateRange
-        AlertType.LECTURE -> Icons.Default.List
-        AlertType.ASSIGNMENT -> Icons.Default.Create
-        AlertType.STUDY -> Icons.Default.PlayArrow
-        AlertType.ACHIEVEMENT -> Icons.Default.Star
-    }
-
-    StudentCard(
-        backgroundColor = if (alert.isRead) CardDark else ElevatedCardDark,
-        borderColor = if (alert.isRead) BorderDark else PrimaryPurple.copy(alpha = 0.5f),
-        onClick = onClick
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        color = colors.card,
+        border = BorderStroke(1.dp, if (!alert.isRead) colors.accent.copy(alpha = 0.5f) else colors.border),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -130,34 +130,45 @@ fun AlertRow(
                     .background(typeColor.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = typeColor, modifier = Modifier.size(18.dp))
+                Icon(
+                    imageVector = when (alert.type) {
+                        AlertType.ATTENDANCE -> Icons.Default.Warning
+                        AlertType.EXAM -> Icons.Default.Info
+                        AlertType.LECTURE -> Icons.Default.DateRange
+                        AlertType.ASSIGNMENT -> Icons.Default.Edit
+                        AlertType.STUDY -> Icons.Default.PlayArrow
+                        AlertType.ACHIEVEMENT -> Icons.Default.Star
+                    },
+                    contentDescription = null,
+                    tint = typeColor,
+                    modifier = Modifier.size(18.dp)
+                )
             }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    alert.title,
-                    fontWeight = if (alert.isRead) FontWeight.Normal else FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = PrimaryText
+                    text = alert.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (!alert.isRead) FontWeight.Bold else FontWeight.Medium,
+                    color = colors.textPrimary
                 )
                 Text(
-                    alert.message,
+                    text = alert.message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = colors.textSecondary
                 )
                 Text(
-                    dateStr,
+                    text = dateStr,
                     style = MaterialTheme.typography.labelSmall,
-                    color = SecondaryText.copy(alpha = 0.7f)
+                    color = colors.textMuted
                 )
             }
+
             if (!alert.isRead) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(LightPurple, CircleShape)
+                        .background(colors.accent, CircleShape)
                 )
             }
         }

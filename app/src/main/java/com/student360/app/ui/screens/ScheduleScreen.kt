@@ -42,6 +42,7 @@ fun ScheduleScreen(
     repository: StudentRepository,
     viewModel: ScheduleViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val timetable by viewModel.timetable.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
     val profile by viewModel.profile.collectAsState()
@@ -70,7 +71,7 @@ fun ScheduleScreen(
     val selectedDayList = timetable.filter { it.dayOfWeek == selectedDayTab }.sortedBy { it.startTime }
 
     Scaffold(
-        containerColor = BgDark,
+        containerColor = colors.bg,
         floatingActionButton = {
             if (subjects.isNotEmpty() && !isEditMode) {
                 FloatingActionButton(
@@ -78,7 +79,7 @@ fun ScheduleScreen(
                         addInitialDay = selectedDayTab
                         showAddDialog = true
                     },
-                    containerColor = PrimaryPurple,
+                    containerColor = colors.accent,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -91,7 +92,7 @@ fun ScheduleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(BgDark)
+                .background(colors.bg)
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -587,246 +588,4 @@ fun LectureCard(
             }
         }
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AddLectureDialog(
-    subjects: List<Subject>,
-    initialDay: Int,
-    onDismiss: () -> Unit,
-    onSave: (Int, Int, String, String, String, String?, Int?) -> Unit
-) {
-    var subjectIndex by remember { mutableStateOf(0) }
-    var selectedDay by remember { mutableStateOf(initialDay) }
-    var startTime by remember { mutableStateOf("") }
-    var endTime by remember { mutableStateOf("") }
-    var room by remember { mutableStateOf("") }
-    var facultyOverride by remember { mutableStateOf("") }
-    var notificationIndex by remember { mutableStateOf(2) } // Default: 10m before
-
-    val daysOfWeek = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
-    val notificationOptions = listOf("None", "At start", "5m before", "10m before", "15m before", "30m before")
-    val notificationMinutes = listOf(null, 0, 5, 10, 15, 30)
-
-    var subjectDropdownExpanded by remember { mutableStateOf(false) }
-    var dayDropdownExpanded by remember { mutableStateOf(false) }
-    var notifyDropdownExpanded by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = SurfaceDark,
-        titleContentColor = PrimaryText,
-        textContentColor = PrimaryText,
-        title = {
-            Text(
-                "Add Lecture",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // Subject Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = subjectDropdownExpanded,
-                    onExpandedChange = { subjectDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = subjects[subjectIndex].name,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Select Subject") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subjectDropdownExpanded) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
-                        ),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = subjectDropdownExpanded,
-                        onDismissRequest = { subjectDropdownExpanded = false },
-                        modifier = Modifier.background(SurfaceDark)
-                    ) {
-                        subjects.forEachIndexed { index, sub ->
-                            DropdownMenuItem(
-                                text = { Text(sub.name, color = PrimaryText) },
-                                onClick = {
-                                    subjectIndex = index
-                                    subjectDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // Day Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = dayDropdownExpanded,
-                    onExpandedChange = { dayDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = daysOfWeek[selectedDay],
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Select Day") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayDropdownExpanded) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
-                        ),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = dayDropdownExpanded,
-                        onDismissRequest = { dayDropdownExpanded = false },
-                        modifier = Modifier.background(SurfaceDark)
-                    ) {
-                        daysOfWeek.forEachIndexed { index, day ->
-                            DropdownMenuItem(
-                                text = { Text(day, color = PrimaryText) },
-                                onClick = {
-                                    selectedDay = index
-                                    dayDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = startTime,
-                        onValueChange = { startTime = it },
-                        label = { Text("Start (HH:MM)") },
-                        placeholder = { Text("09:00") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = endTime,
-                        onValueChange = { endTime = it },
-                        label = { Text("End (HH:MM)") },
-                        placeholder = { Text("10:00") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = room,
-                    onValueChange = { room = it },
-                    label = { Text("Room / Location (e.g. LHC-101)") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryPurple,
-                        unfocusedBorderColor = BorderDark,
-                        focusedTextColor = PrimaryText,
-                        unfocusedTextColor = PrimaryText
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = facultyOverride,
-                    onValueChange = { facultyOverride = it },
-                    label = { Text("Faculty (Optional)") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryPurple,
-                        unfocusedBorderColor = BorderDark,
-                        focusedTextColor = PrimaryText,
-                        unfocusedTextColor = PrimaryText
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Notification Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = notifyDropdownExpanded,
-                    onExpandedChange = { notifyDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = notificationOptions[notificationIndex],
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Pre-Class Notification") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = notifyDropdownExpanded) },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
-                        ),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = notifyDropdownExpanded,
-                        onDismissRequest = { notifyDropdownExpanded = false },
-                        modifier = Modifier.background(SurfaceDark)
-                    ) {
-                        notificationOptions.forEachIndexed { index, option ->
-                            DropdownMenuItem(
-                                text = { Text(option, color = PrimaryText) },
-                                onClick = {
-                                    notificationIndex = index
-                                    notifyDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(
-                        subjects[subjectIndex].id,
-                        selectedDay,
-                        startTime,
-                        endTime,
-                        room,
-                        facultyOverride.ifBlank { null },
-                        notificationMinutes[notificationIndex]
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                shape = RoundedCornerShape(10.dp),
-                enabled = startTime.isNotBlank() && endTime.isNotBlank() && room.isNotBlank()
-            ) {
-                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = SecondaryText)
-            }
-        }
-    )
 }

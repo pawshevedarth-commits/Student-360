@@ -36,6 +36,7 @@ fun StudyScreen(
     repository: StudentRepository,
     viewModel: StudyViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val subjects by viewModel.subjects.collectAsState()
     val goals by viewModel.goals.collectAsState()
 
@@ -65,7 +66,7 @@ fun StudyScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgDark),
+            .background(colors.bg),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {

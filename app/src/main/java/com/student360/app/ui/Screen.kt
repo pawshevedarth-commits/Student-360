@@ -1,14 +1,17 @@
 package com.student360.app.ui
 
 enum class Screen(val title: String) {
-    HOME("Home"),
-    ATTENDANCE("Attendance"),
-    SCHEDULE("Schedule"),
+    TODAY("Today"),
+    ATTENDANCE("Timetable"),
+    CALENDAR("Calendar"),
+    SUBJECTS("Subjects"),
+    SETTINGS("Settings"),
+    // Auxiliary features accessible via Drawer
+    HOME("Overview"),
     MY_DAY("My Day"),
-    STUDY("Study"),
+    STUDY("Study Focus"),
     ASSISTANT("Study Assistant"),
     EXAMS("Exams"),
     PROGRESS("Progress"),
-    SETTINGS("Settings"),
     ALERTS("Alerts")
 }

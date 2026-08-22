@@ -40,6 +40,7 @@ fun ExamsScreen(
     repository: StudentRepository,
     viewModel: ExamsViewModel = viewModel()
 ) {
+    val colors = LocalAppColors.current
     val examsWithPrep by viewModel.examsWithPrep.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
 
@@ -49,12 +50,12 @@ fun ExamsScreen(
         .minByOrNull { it.daysRemaining }
 
     Scaffold(
-        containerColor = BgDark,
+        containerColor = colors.bg,
         floatingActionButton = {
             if (subjects.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = PrimaryPurple,
+                    containerColor = colors.accent,
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -67,7 +68,7 @@ fun ExamsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(BgDark)
+                .background(colors.bg)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Exam Mode Active Urgent Banner
