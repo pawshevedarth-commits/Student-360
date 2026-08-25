@@ -50,8 +50,8 @@ fun ProgressScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.bg)
-            .padding(16.dp),
+            .background(colors.bg),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Attendance Trend Summary Card
@@ -367,13 +367,14 @@ fun AttendanceHeatmapGrid(
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Week Header
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             daysOfWeek.forEach { day ->
                 Text(
                     day,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.width(36.dp),
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     color = SecondaryText
                 )
             }
@@ -384,57 +385,62 @@ fun AttendanceHeatmapGrid(
         val gridRows = 6
 
         for (row in 0 until gridRows) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 for (col in 0 until 6) {
                     val gridIndex = row * 6 + col
-                    if (gridIndex < firstDayOffset || dayCounter > maxDays) {
-                        Spacer(modifier = Modifier.size(36.dp))
-                    } else {
-                        val currentDay = dayCounter
-                        val dayCal = Calendar.getInstance().apply {
-                            set(Calendar.DAY_OF_MONTH, currentDay)
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                        val timeMillis = dayCal.timeInMillis
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (gridIndex >= firstDayOffset && dayCounter <= maxDays) {
+                            val currentDay = dayCounter
+                            val dayCal = Calendar.getInstance().apply {
+                                set(Calendar.DAY_OF_MONTH, currentDay)
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            val timeMillis = dayCal.timeInMillis
 
-                        val dayStatus = collegeDays.find { it.date == timeMillis }?.status
-                        val dayRecords = records.filter {
-                            val rCal = Calendar.getInstance().apply { timeInMillis = it.date }
-                            rCal.set(Calendar.HOUR_OF_DAY, 0)
-                            rCal.set(Calendar.MINUTE, 0)
-                            rCal.set(Calendar.SECOND, 0)
-                            rCal.set(Calendar.MILLISECOND, 0)
-                            rCal.timeInMillis == timeMillis
-                        }
+                            val dayStatus = collegeDays.find { it.date == timeMillis }?.status
+                            val dayRecords = records.filter {
+                                val rCal = Calendar.getInstance().apply { timeInMillis = it.date }
+                                rCal.set(Calendar.HOUR_OF_DAY, 0)
+                                rCal.set(Calendar.MINUTE, 0)
+                                rCal.set(Calendar.SECOND, 0)
+                                rCal.set(Calendar.MILLISECOND, 0)
+                                rCal.timeInMillis == timeMillis
+                            }
 
-                        val cellColor = when {
-                            dayStatus == DayStatus.HOLIDAY || dayStatus == DayStatus.NO_CLASSES -> HolidayGrey
-                            dayStatus == DayStatus.EXAM || dayStatus == DayStatus.STUDY_LEAVE -> ExamPurple
-                            dayRecords.isEmpty() -> SurfaceDark
-                            dayRecords.all { it.status == AttendanceStatus.OFF } -> HolidayGrey
-                            dayRecords.all { it.status == AttendanceStatus.PRESENT } -> SuccessGreen
-                            dayRecords.all { it.status == AttendanceStatus.ABSENT } -> DangerRed
-                            else -> WarningOrange
-                        }
+                            val cellColor = when {
+                                dayStatus == DayStatus.HOLIDAY || dayStatus == DayStatus.NO_CLASSES -> HolidayGrey
+                                dayStatus == DayStatus.EXAM || dayStatus == DayStatus.STUDY_LEAVE -> ExamPurple
+                                dayRecords.isEmpty() -> SurfaceDark
+                                dayRecords.all { it.status == AttendanceStatus.OFF } -> HolidayGrey
+                                dayRecords.all { it.status == AttendanceStatus.PRESENT } -> SuccessGreen
+                                dayRecords.all { it.status == AttendanceStatus.ABSENT } -> DangerRed
+                                else -> WarningOrange
+                            }
 
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .background(cellColor, RoundedCornerShape(6.dp))
-                                .clickable { onDayClick(timeMillis) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "$currentDay",
-                                color = if (cellColor == SurfaceDark) SecondaryText else Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(cellColor, RoundedCornerShape(6.dp))
+                                    .clickable { onDayClick(timeMillis) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "$currentDay",
+                                    color = if (cellColor == SurfaceDark) SecondaryText else Color.White,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            dayCounter++
                         }
-                        dayCounter++
                     }
                 }
             }

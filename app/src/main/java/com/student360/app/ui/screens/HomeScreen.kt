@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.Screen
@@ -283,11 +284,11 @@ fun HomeScreen(
         SectionHeader(title = "Quick Actions")
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             QuickActionButton(
                 icon = Icons.Default.CheckCircle,
-                label = "Attendance",
+                label = "Attend",
                 modifier = Modifier.weight(1f),
                 onClick = { onNavigate(Screen.ATTENDANCE) }
             )
@@ -327,7 +328,7 @@ fun HomeScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(
                         modifier = Modifier
@@ -337,25 +338,39 @@ fun HomeScreen(
                     ) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = colors.danger, modifier = Modifier.size(20.dp))
                     }
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(
                             text = "Attendance below target",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = colors.danger
+                            color = colors.danger,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Your overall attendance is ${String.format("%.1f", attPct)}%. Target: 75%.",
+                            text = "Your overall attendance is ${String.format(Locale.US, "%.1f", attPct)}%. Target: 75%.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = colors.textSecondary
+                            color = colors.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
-                    Text(
-                        text = "View →",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.danger,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = colors.danger.copy(alpha = 0.15f),
+                        border = BorderStroke(1.dp, colors.danger.copy(alpha = 0.3f))
+                    ) {
+                        Text(
+                            text = "View →",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.danger,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -379,13 +394,13 @@ fun QuickActionButton(
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(34.dp)
                     .background(colors.elevatedCard, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -393,7 +408,7 @@ fun QuickActionButton(
                     icon,
                     contentDescription = label,
                     tint = colors.accent,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(17.dp)
                 )
             }
             Text(
@@ -401,6 +416,7 @@ fun QuickActionButton(
                 style = MaterialTheme.typography.labelSmall,
                 color = colors.textPrimary,
                 fontWeight = FontWeight.Medium,
+                fontSize = 11.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

@@ -36,6 +36,7 @@ import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
+import java.util.Locale
 
 @Composable
 fun ScheduleScreen(
@@ -96,7 +97,7 @@ fun ScheduleScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Top Header Row: Student Name & Attendance Pill + Add + Edit
@@ -110,8 +111,12 @@ fun ScheduleScreen(
                             text = profile?.name?.ifBlank { "Student" } ?: "Student",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = PrimaryText
+                            color = PrimaryText,
+                            modifier = Modifier.weight(1f, fill = false),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -123,7 +128,7 @@ fun ScheduleScreen(
                                 border = BorderStroke(1.dp, BorderDark)
                             ) {
                                 Text(
-                                    text = "${String.format("%.2f", overallPct)} | $targetPct",
+                                    text = "${String.format(Locale.US, "%.2f", overallPct)} | $targetPct",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = PrimaryText,

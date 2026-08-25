@@ -277,14 +277,16 @@ fun MainShell(repository: StudentRepository) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 6.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceAround,
+                            .navigationBarsPadding()
+                            .padding(horizontal = 2.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         ReferenceBottomNavItem(
                             icon = Icons.Default.Home,
                             label = "Today",
                             isSelected = (currentScreen == Screen.TODAY && activeDetailSubject == null),
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.TODAY
@@ -294,6 +296,7 @@ fun MainShell(repository: StudentRepository) {
                             icon = Icons.Default.Menu,
                             label = "Timetable",
                             isSelected = (currentScreen == Screen.ATTENDANCE && activeDetailSubject == null),
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.ATTENDANCE
@@ -303,6 +306,7 @@ fun MainShell(repository: StudentRepository) {
                             icon = Icons.Default.DateRange,
                             label = "Calendar",
                             isSelected = (currentScreen == Screen.CALENDAR && activeDetailSubject == null),
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.CALENDAR
@@ -312,6 +316,7 @@ fun MainShell(repository: StudentRepository) {
                             icon = Icons.Default.List,
                             label = "Subjects",
                             isSelected = (currentScreen == Screen.SUBJECTS || activeDetailSubject != null),
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.SUBJECTS
@@ -321,6 +326,7 @@ fun MainShell(repository: StudentRepository) {
                             icon = Icons.Default.Settings,
                             label = "Settings",
                             isSelected = (currentScreen == Screen.SETTINGS && activeDetailSubject == null),
+                            modifier = Modifier.weight(1f),
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.SETTINGS
@@ -395,21 +401,22 @@ fun ReferenceBottomNavItem(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val colors = LocalAppColors.current
     Column(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.Center
     ) {
         Surface(
             shape = RoundedCornerShape(14.dp),
             color = if (isSelected) colors.activePill else Color.Transparent,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
         ) {
             Icon(
                 imageVector = icon,
@@ -420,12 +427,16 @@ fun ReferenceBottomNavItem(
                     .size(20.dp)
             )
         }
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) (if (colors.isDark) Color.White else colors.accent) else colors.textSecondary,
-            fontSize = 11.sp
+            fontSize = 11.sp,
+            maxLines = 1,
+            softWrap = false,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
     }
 }

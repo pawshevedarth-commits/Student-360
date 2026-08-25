@@ -88,9 +88,7 @@ fun AttendanceScreen(
             .background(colors.bg)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 80.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             // 1. TOP BAR (Student360 | 59.26 | 75 | + | ✏️)
             Row(
@@ -105,12 +103,16 @@ fun AttendanceScreen(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary,
-                    fontSize = 20.sp
+                    fontSize = 20.sp,
+                    modifier = Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.width(8.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // Attendance Pill: 57.41 | 75
                     Surface(
@@ -123,7 +125,7 @@ fun AttendanceScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = overallStatusColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                         )
                     }
 
@@ -176,13 +178,14 @@ fun AttendanceScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceAround
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 daysOfWeek.forEachIndexed { index, day ->
                     val isSelected = selectedDayTab == index
                     Column(
                         modifier = Modifier
+                            .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
                             .clickable {
                                 selectedDayTab = index
@@ -194,7 +197,7 @@ fun AttendanceScreen(
                                 cal.add(Calendar.DAY_OF_YEAR, diff)
                                 viewModel.selectDate(cal.timeInMillis)
                             }
-                            .padding(horizontal = 6.dp, vertical = 6.dp),
+                            .padding(vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -202,13 +205,15 @@ fun AttendanceScreen(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             color = if (isSelected) colors.accent else colors.textSecondary,
-                            fontSize = 13.sp
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            softWrap = false
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         if (isSelected) {
                             Box(
                                 modifier = Modifier
-                                    .width(22.dp)
+                                    .width(20.dp)
                                     .height(2.5.dp)
                                     .background(colors.accent, RoundedCornerShape(1.dp))
                             )
@@ -402,7 +407,7 @@ fun AttendanceScreen(
                                                     .background(Color(0xFFE8DEFF)) // Soft lavender cell matching reference
                                                     .border(BorderStroke(1.dp, Color(0xFFD4C4FA)), RoundedCornerShape(8.dp))
                                                     .clickable { selectedEntryForDetail = entry }
-                                                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                                                    .padding(horizontal = 3.dp, vertical = 4.dp),
                                                 contentAlignment = Alignment.TopStart
                                             ) {
                                                 Text(
@@ -410,8 +415,8 @@ fun AttendanceScreen(
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color(0xFF261D45), // Dark readable text on lavender cell
-                                                    fontSize = 11.sp,
-                                                    lineHeight = 12.sp,
+                                                    fontSize = 10.sp,
+                                                    lineHeight = 11.sp,
                                                     maxLines = 3,
                                                     overflow = TextOverflow.Ellipsis
                                                 )

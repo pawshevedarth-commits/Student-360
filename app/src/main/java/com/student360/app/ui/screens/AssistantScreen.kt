@@ -39,8 +39,8 @@ fun AssistantScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.bg)
-            .padding(16.dp),
+            .background(colors.bg),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {

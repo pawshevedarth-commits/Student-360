@@ -84,7 +84,7 @@ fun TodayScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // 1. Top Header: Student360 | 57.41 | 75 | +
@@ -111,7 +111,10 @@ fun TodayScreen(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = colors.textPrimary,
-                        fontSize = 20.sp
+                        fontSize = 20.sp,
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -280,7 +283,7 @@ fun TodayAttendanceCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Circular / Fractional Badge (e.g. 41.67 / 75)
                 AttendanceFractionBadge(
@@ -303,7 +306,7 @@ fun TodayAttendanceCard(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = colors.textPrimary,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
@@ -328,8 +331,8 @@ fun TodayAttendanceCard(
                         text = recommendation,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary,
-                        fontSize = 13.sp,
-                        maxLines = 1,
+                        fontSize = 12.sp,
+                        maxLines = 2,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
 
@@ -338,7 +341,9 @@ fun TodayAttendanceCard(
                             text = "⏰ $startTime" + (if (endTime.isNotBlank()) " – $endTime" else "") + (if (room.isNotBlank()) " • $room" else ""),
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.textMuted,
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
