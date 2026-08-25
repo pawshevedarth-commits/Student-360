@@ -19,11 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -36,105 +38,105 @@ import com.student360.app.ui.theme.*
 import java.util.Locale
 
 /**
- * Official Student360 Emblem branding symbol.
+ * Official Scholar / Student360 3x3 Matrix Emblem branding symbol.
  */
 @Composable
 fun Student360Emblem(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp
 ) {
+    val squircleCorner = size * 0.26f
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(squircleCorner))
             .background(
-                Brush.radialGradient(
-                    colors = listOf(Color(0xFF1E3A70), Color(0xFF0B132B))
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF131D36), Color(0xFF090F1C)),
+                    start = Offset.Zero,
+                    end = Offset.Infinite
                 )
+            )
+            .border(
+                width = 1.dp,
+                color = Color(0xFF1E293B).copy(alpha = 0.7f),
+                shape = RoundedCornerShape(squircleCorner)
             ),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.size(size * 0.72f)) {
-            val w = this.size.width
-            val h = this.size.height
+        Canvas(modifier = Modifier.size(size * 0.62f)) {
+            val totalW = this.size.width
 
-            // 360 Orbital Ring Arc
-            val strokeWidth = w * 0.10f
-            drawArc(
-                brush = Brush.sweepGradient(
-                    listOf(BrandCyan, BrandBlue, BrandSky, BrandCyan)
-                ),
-                startAngle = 40f,
-                sweepAngle = 290f,
-                useCenter = false,
-                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            val gap = totalW * 0.08f
+            val cellSize = (totalW - 2 * gap) / 3f
+            val cornerRadius = CornerRadius(cellSize * 0.28f, cellSize * 0.28f)
+
+            // 3x3 Matrix Colors matching the Figma Academic App Logo
+            val matrixColors = listOf(
+                listOf(Color(0xFF141F36), Color(0xFF1C2C4E), Color(0xFF2952E3)),
+                listOf(Color(0xFF1C2C4E), Color(0xFF2952E3), Color(0xFF06B6D4)),
+                listOf(Color(0xFF2952E3), Color(0xFF06B6D4), Color(0xFF22D3EE))
             )
 
-            // Orbital Pulse Dot
-            drawCircle(
-                color = BrandCyan,
-                radius = strokeWidth * 0.7f,
-                center = Offset(w * 0.82f, h * 0.24f)
-            )
+            for (r in 0..2) {
+                for (c in 0..2) {
+                    val left = c * (cellSize + gap)
+                    val top = r * (cellSize + gap)
 
-            // Graduation Cap Top (Diamond)
-            val capPath = Path().apply {
-                moveTo(w * 0.50f, h * 0.28f)
-                lineTo(w * 0.82f, h * 0.46f)
-                lineTo(w * 0.50f, h * 0.62f)
-                lineTo(w * 0.18f, h * 0.46f)
-                close()
+                    drawRoundRect(
+                        color = matrixColors[r][c],
+                        topLeft = Offset(left, top),
+                        size = androidx.compose.ui.geometry.Size(cellSize, cellSize),
+                        cornerRadius = cornerRadius
+                    )
+
+                    // Draw white checkmark in cell [2,2]
+                    if (r == 2 && c == 2) {
+                        val cellCenterX = left + cellSize / 2f
+                        val cellCenterY = top + cellSize / 2f
+
+                        val checkPath = Path().apply {
+                            moveTo(cellCenterX - cellSize * 0.25f, cellCenterY + cellSize * 0.02f)
+                            lineTo(cellCenterX - cellSize * 0.06f, cellCenterY + cellSize * 0.22f)
+                            lineTo(cellCenterX + cellSize * 0.26f, cellCenterY - cellSize * 0.20f)
+                        }
+
+                        drawPath(
+                            path = checkPath,
+                            color = Color.White,
+                            style = Stroke(
+                                width = cellSize * 0.22f,
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+                }
             }
-            drawPath(
-                path = capPath,
-                brush = Brush.linearGradient(
-                    listOf(BrandSky, BrandBlue, Color(0xFF1D4ED8))
-                )
-            )
-
-            // Cap Skull Base
-            val baseCapPath = Path().apply {
-                moveTo(w * 0.32f, h * 0.54f)
-                lineTo(w * 0.32f, h * 0.70f)
-                cubicTo(w * 0.32f, h * 0.82f, w * 0.68f, h * 0.82f, w * 0.68f, h * 0.70f)
-                lineTo(w * 0.68f, h * 0.54f)
-                close()
-            }
-            drawPath(
-                path = baseCapPath,
-                brush = Brush.linearGradient(
-                    listOf(BrandBlue, Color(0xFF1E40AF))
-                )
-            )
-
-            // Tassel
-            val tasselPath = Path().apply {
-                moveTo(w * 0.50f, h * 0.46f)
-                quadraticBezierTo(w * 0.74f, h * 0.48f, w * 0.78f, h * 0.68f)
-            }
-            drawPath(
-                path = tasselPath,
-                color = BrandCyan,
-                style = Stroke(width = strokeWidth * 0.45f, cap = StrokeCap.Round)
-            )
-            drawCircle(
-                color = BrandCyan,
-                radius = strokeWidth * 0.5f,
-                center = Offset(w * 0.78f, h * 0.70f)
-            )
         }
     }
 }
 
 /**
- * Full Student360 Logo with Emblem and Wordmark.
+ * Scholar Emblem alias for academic branding.
+ */
+@Composable
+fun ScholarEmblem(
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp
+) {
+    Student360Emblem(modifier = modifier, size = size)
+}
+
+/**
+ * Full Student360 / Scholar Logo with Emblem and Wordmark.
  */
 @Composable
 fun Student360Logo(
     modifier: Modifier = Modifier,
     emblemSize: Dp = 38.dp,
     showWordmark: Boolean = true,
-    tagline: String? = null
+    tagline: String? = "Academic management platform"
 ) {
     val colors = LocalAppColors.current
     Row(
@@ -147,16 +149,11 @@ fun Student360Logo(
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Student",
+                        text = "Scholar",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary
-                    )
-                    Text(
-                        text = "360",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        color = BrandCyan
+                        color = colors.textPrimary,
+                        fontSize = 16.sp
                     )
                 }
                 if (tagline != null) {

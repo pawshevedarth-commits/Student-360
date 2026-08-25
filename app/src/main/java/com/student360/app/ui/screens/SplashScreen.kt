@@ -54,25 +54,17 @@ fun SplashScreen(
                 .scale(scale)
                 .alpha(alpha)
         ) {
-            Student360Emblem(size = 88.dp)
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Student",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryText
-                )
-                Text(
-                    text = "360",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Black,
-                    color = BrandCyan
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+            Student360Emblem(size = 96.dp)
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
-                text = "Your Academic Powerhouse",
+                text = "Scholar",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Academic management platform",
                 style = MaterialTheme.typography.bodyMedium,
                 color = SecondaryText,
                 fontWeight = FontWeight.Medium
