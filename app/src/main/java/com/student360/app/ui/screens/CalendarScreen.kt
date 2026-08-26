@@ -5,6 +5,7 @@ package com.student360.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -51,7 +52,25 @@ fun CalendarScreen(
 
     val monthFormatter = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val dayFormatter = remember { SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()) }
+    val dateHeaderFormatter = remember { SimpleDateFormat("d MMMM", Locale.getDefault()) }
+
+    val todayTime = remember { getStartOfDay(System.currentTimeMillis()) }
     val selectedDateFormatted = remember(selectedDate) { dayFormatter.format(Date(selectedDate)) }
+    val selectedDateHeader = remember(selectedDate) {
+        val prefix = if (selectedDate == todayTime) "Today • " else ""
+        prefix + dateHeaderFormatter.format(Date(selectedDate))
+    }
+
+    val isSelectedWeekend = remember(selectedDate) {
+        val c = Calendar.getInstance().apply { timeInMillis = selectedDate }
+        val d = c.get(Calendar.DAY_OF_WEEK)
+        d == Calendar.SATURDAY || d == Calendar.SUNDAY
+    }
+
+    val todayCal = remember { Calendar.getInstance() }
+    val isCurrentMonth = (currentMonth.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR)) &&
+            (currentMonth.get(Calendar.MONTH) == todayCal.get(Calendar.MONTH))
+    val isTodaySelected = selectedDate == todayTime
 
     val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val cal = currentMonth.clone() as Calendar
@@ -59,6 +78,13 @@ fun CalendarScreen(
     val startOffset = cal.get(Calendar.DAY_OF_WEEK) - 1
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
     val targetPct = 75
+
+    // Daily statistics calculation
+    val attendedClasses = todayLectures.count { it.attendanceRecord?.status == AttendanceStatus.PRESENT }
+    val missedClasses = todayLectures.count { it.attendanceRecord?.status == AttendanceStatus.ABSENT }
+    val offClasses = todayLectures.count { it.attendanceRecord?.status == AttendanceStatus.OFF }
+    val conductedClasses = attendedClasses + missedClasses
+    val dayPercentage = if (conductedClasses > 0) (attendedClasses.toDouble() / conductedClasses.toDouble()) * 100.0 else 100.0
 
     Box(
         modifier = Modifier
@@ -79,7 +105,7 @@ fun CalendarScreen(
                 )
             }
 
-            // Calendar Heatmap Card
+            // Calendar Card
             item {
                 StudentCard(
                     backgroundColor = colors.card,
@@ -108,13 +134,36 @@ fun CalendarScreen(
                                 )
                             }
 
-                            Text(
-                                text = monthFormatter.format(currentMonth.time),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary,
-                                fontSize = 16.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = monthFormatter.format(currentMonth.time),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.textPrimary,
+                                    fontSize = 16.sp
+                                )
+
+                                // Quick "Today" Jump Action
+                                if (!isCurrentMonth || !isTodaySelected) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = colors.activePill,
+                                        modifier = Modifier.clickable { viewModel.selectToday() }
+                                    ) {
+                                        Text(
+                                            text = "Today",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (colors.isDark) Color.White else colors.accent,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
 
                             IconButton(
                                 onClick = { viewModel.nextMonth() },
@@ -149,7 +198,7 @@ fun CalendarScreen(
 
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        // Days Grid Matrix
+                        // Days Grid Matrix (7 columns)
                         val totalSlots = startOffset + daysInMonth
                         val rows = (totalSlots + 6) / 7
 
@@ -163,15 +212,20 @@ fun CalendarScreen(
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .height(38.dp),
+                                            .height(40.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         if (dayNum in 1..daysInMonth) {
                                             val dayCal = (cal.clone() as Calendar).apply {
                                                 set(Calendar.DAY_OF_MONTH, dayNum)
+                                                set(Calendar.HOUR_OF_DAY, 0)
+                                                set(Calendar.MINUTE, 0)
+                                                set(Calendar.SECOND, 0)
+                                                set(Calendar.MILLISECOND, 0)
                                             }
                                             val dayTime = dayCal.timeInMillis
                                             val isSelected = dayTime == selectedDate
+                                            val isToday = dayTime == todayTime
                                             val dayStats = heatmapData[dayTime]
 
                                             val dotColor = when (dayStats?.status) {
@@ -179,13 +233,19 @@ fun CalendarScreen(
                                                 DayAttendanceState.MISSED -> colors.danger
                                                 DayAttendanceState.MIXED -> colors.accent
                                                 DayAttendanceState.OFF -> colors.warning
-                                                else -> null
+                                                DayAttendanceState.NOT_MARKED -> colors.textSecondary.copy(alpha = 0.5f)
+                                                null -> null
                                             }
 
                                             Column(
                                                 modifier = Modifier
                                                     .size(36.dp)
                                                     .clip(CircleShape)
+                                                    .then(
+                                                        if (isToday && !isSelected) {
+                                                            Modifier.border(BorderStroke(1.5.dp, colors.accent), CircleShape)
+                                                        } else Modifier
+                                                    )
                                                     .background(
                                                         if (isSelected) colors.activePill else Color.Transparent
                                                     )
@@ -196,21 +256,21 @@ fun CalendarScreen(
                                                 Text(
                                                     text = "$dayNum",
                                                     style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
                                                     color = if (isSelected) (if (colors.isDark) Color.White else colors.accent) else colors.textPrimary,
                                                     fontSize = 12.sp
                                                 )
                                                 if (dotColor != null) {
                                                     Box(
                                                         modifier = Modifier
-                                                            .size(4.dp)
+                                                            .size(4.5.dp)
                                                             .background(
-                                                                if (isSelected) (if (colors.isDark) Color(0xFF1F1B2E) else Color.White) else dotColor,
+                                                                if (isSelected) (if (colors.isDark) Color.White else colors.accent) else dotColor,
                                                                 CircleShape
                                                             )
                                                     )
                                                 } else {
-                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Spacer(modifier = Modifier.height(4.5.dp))
                                                 }
                                             }
                                         }
@@ -222,7 +282,7 @@ fun CalendarScreen(
                 }
             }
 
-            // Breakdown Pills Row
+            // Legend / Status Breakdown Pills
             item {
                 Row(
                     modifier = Modifier
@@ -230,78 +290,114 @@ fun CalendarScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    StatusPillBadge(label = "Not marked: ${summary.notMarkedDays}", dotColor = colors.textSecondary)
-                    StatusPillBadge(label = "Off: ${summary.offDays}", dotColor = colors.warning)
-                    StatusPillBadge(label = "Missed: ${summary.missedDays}", dotColor = colors.danger)
                     StatusPillBadge(label = "Attended: ${summary.attendedDays}", dotColor = colors.success)
+                    StatusPillBadge(label = "Missed: ${summary.missedDays}", dotColor = colors.danger)
                     StatusPillBadge(label = "Mixed: ${summary.mixedDays}", dotColor = colors.accent)
+                    StatusPillBadge(label = "Off: ${summary.offDays}", dotColor = colors.warning)
+                    StatusPillBadge(label = "Not marked: ${summary.notMarkedDays}", dotColor = colors.textSecondary.copy(alpha = 0.5f))
                 }
             }
 
-            // Summary Stats Bar Card
+            // Monthly Attendance Summary Card
             item {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = colors.elevatedCard,
+                    color = colors.card,
                     border = BorderStroke(1.dp, colors.border),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        StatColumnItem(
-                            label = "Off",
-                            value = "${summary.totalOff}",
-                            modifier = Modifier.weight(1f),
-                            showDivider = true
-                        )
-                        StatColumnItem(
-                            label = "Missed",
-                            value = "${summary.totalMissed}",
-                            modifier = Modifier.weight(1f),
-                            showDivider = true
-                        )
-                        StatColumnItem(
-                            label = "Attended",
-                            value = "${summary.totalAttended}",
-                            modifier = Modifier.weight(1f),
-                            showDivider = true
-                        )
-                        StatColumnItem(
-                            label = "Total",
-                            value = "${summary.totalAttended + summary.totalMissed}",
-                            modifier = Modifier.weight(1f),
-                            showDivider = true
-                        )
-                        StatColumnItem(
-                            label = "Percent",
-                            value = "${String.format(Locale.US, "%.2f", summary.overallPercentage)}%",
-                            modifier = Modifier.weight(1.2f),
-                            showDivider = false
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "MONTH ATTENDANCE",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textSecondary,
+                                letterSpacing = 1.sp
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (summary.overallPercentage >= 75.0) colors.success.copy(alpha = 0.15f) else colors.danger.copy(alpha = 0.15f)
+                            ) {
+                                Text(
+                                    text = "${String.format(Locale.US, "%.2f", summary.overallPercentage)}% Overall",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (summary.overallPercentage >= 75.0) colors.success else colors.danger,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StatColumnItem(
+                                label = "Attended",
+                                value = "${summary.totalAttended}",
+                                modifier = Modifier.weight(1f),
+                                showDivider = true
+                            )
+                            StatColumnItem(
+                                label = "Missed",
+                                value = "${summary.totalMissed}",
+                                modifier = Modifier.weight(1f),
+                                showDivider = true
+                            )
+                            StatColumnItem(
+                                label = "Off",
+                                value = "${summary.totalOff}",
+                                modifier = Modifier.weight(1f),
+                                showDivider = true
+                            )
+                            StatColumnItem(
+                                label = "Total",
+                                value = "${summary.totalAttended + summary.totalMissed}",
+                                modifier = Modifier.weight(1f),
+                                showDivider = false
+                            )
+                        }
                     }
                 }
             }
 
-            // Selected Day Classes
+            // Selected Date Header & Daily Summary
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Classes on $selectedDateFormatted",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary,
-                        modifier = Modifier.weight(1f, fill = false),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = selectedDateHeader,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                            fontSize = 16.sp
+                        )
+                        Text(
+                            text = when {
+                                isSelectedWeekend && todayLectures.isEmpty() -> "Day Off • No classes scheduled"
+                                todayLectures.isEmpty() -> "No classes scheduled"
+                                offClasses > 0 -> "${todayLectures.size} Classes • $attendedClasses Attended • $missedClasses Missed • $offClasses Off • ${String.format(Locale.US, "%.1f", dayPercentage)}%"
+                                else -> "${todayLectures.size} Classes • $attendedClasses Attended • $missedClasses Missed • ${String.format(Locale.US, "%.1f", dayPercentage)}%"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary,
+                            fontSize = 11.sp
+                        )
+                    }
 
                     TextButton(onClick = { onNavigateToToday(selectedDate) }) {
                         Text(
@@ -314,18 +410,50 @@ fun CalendarScreen(
                 }
             }
 
+            // Selected Date Lectures / Day Off Surface
             if (todayLectures.isEmpty()) {
                 item {
-                    StudentCard(backgroundColor = colors.card, borderColor = colors.border) {
-                        Text(
-                            text = "No classes recorded for $selectedDateFormatted.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textSecondary,
-                            textAlign = TextAlign.Center,
+                    StudentCard(
+                        backgroundColor = colors.card,
+                        borderColor = colors.border,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp)
-                        )
+                                .padding(vertical = 24.dp, horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (isSelectedWeekend) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = colors.warning.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, colors.warning.copy(alpha = 0.3f))
+                                ) {
+                                    Text(
+                                        text = "DAY OFF",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.warning,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "No classes scheduled. Enjoy your weekend!",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                            } else {
+                                Text(
+                                    text = "No classes scheduled on $selectedDateFormatted.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             } else {
@@ -347,17 +475,29 @@ fun CalendarScreen(
                             ) {
                                 Text(
                                     text = item.subject.name,
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = colors.textPrimary,
+                                    fontSize = 15.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 if (item.startTime.isNotBlank()) {
                                     Text(
-                                        text = "⏰ ${item.startTime} – ${item.endTime}",
+                                        text = "⏰ ${item.startTime} – ${item.endTime}" + if (item.room.isNotBlank()) " • Room ${item.room}" else "",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = colors.textSecondary,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (item.faculty.isNotBlank()) {
+                                    Text(
+                                        text = "👤 ${item.faculty}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colors.textSecondary,
+                                        fontSize = 11.sp,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -365,14 +505,19 @@ fun CalendarScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
 
-                            // 4 Interactive Status Buttons
+                            // 4 Interactive Status Buttons (Clear, Off, Missed, Attended)
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 QuickAttendanceRoundButton(
                                     symbol = "⊘",
                                     isSelected = currentStatus == null,
                                     activeColor = colors.textSecondary,
                                     onClick = {
-                                        viewModel.markLectureAttendance(item.subject.id, selectedDate, null)
+                                        viewModel.markLectureAttendance(
+                                            subjectId = item.subject.id,
+                                            date = selectedDate,
+                                            status = null,
+                                            timetableId = item.timetableEntry?.id
+                                        )
                                     }
                                 )
                                 QuickAttendanceRoundButton(
@@ -380,7 +525,12 @@ fun CalendarScreen(
                                     isSelected = currentStatus == AttendanceStatus.OFF,
                                     activeColor = colors.warning,
                                     onClick = {
-                                        viewModel.markLectureAttendance(item.subject.id, selectedDate, AttendanceStatus.OFF)
+                                        viewModel.markLectureAttendance(
+                                            subjectId = item.subject.id,
+                                            date = selectedDate,
+                                            status = AttendanceStatus.OFF,
+                                            timetableId = item.timetableEntry?.id
+                                        )
                                     }
                                 )
                                 QuickAttendanceRoundButton(
@@ -388,7 +538,12 @@ fun CalendarScreen(
                                     isSelected = currentStatus == AttendanceStatus.ABSENT,
                                     activeColor = colors.danger,
                                     onClick = {
-                                        viewModel.markLectureAttendance(item.subject.id, selectedDate, AttendanceStatus.ABSENT)
+                                        viewModel.markLectureAttendance(
+                                            subjectId = item.subject.id,
+                                            date = selectedDate,
+                                            status = AttendanceStatus.ABSENT,
+                                            timetableId = item.timetableEntry?.id
+                                        )
                                     }
                                 )
                                 QuickAttendanceRoundButton(
@@ -396,7 +551,12 @@ fun CalendarScreen(
                                     isSelected = currentStatus == AttendanceStatus.PRESENT,
                                     activeColor = colors.success,
                                     onClick = {
-                                        viewModel.markLectureAttendance(item.subject.id, selectedDate, AttendanceStatus.PRESENT)
+                                        viewModel.markLectureAttendance(
+                                            subjectId = item.subject.id,
+                                            date = selectedDate,
+                                            status = AttendanceStatus.PRESENT,
+                                            timetableId = item.timetableEntry?.id
+                                        )
                                     }
                                 )
                             }

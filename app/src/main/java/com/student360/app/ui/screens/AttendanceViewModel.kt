@@ -161,6 +161,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         selectDate(cal.timeInMillis)
     }
 
+    fun selectToday() {
+        val today = getStartOfDay(System.currentTimeMillis())
+        val todayCal = Calendar.getInstance()
+        _currentMonth.value = todayCal
+        _selectedDate.value = today
+        refreshDateData(today)
+        refreshMonthData(todayCal)
+    }
+
     fun previousMonth() {
         val cal = Calendar.getInstance().apply {
             timeInMillis = _currentMonth.value.timeInMillis
@@ -202,7 +211,6 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         records: List<AttendanceRecord>
     ) {
         val list = mutableListOf<LectureItem>()
-        val processedSubjects = mutableSetOf<Int>()
 
         // 1. Add scheduled timetable entries for the day
         schedule.forEach { entry ->
@@ -224,12 +232,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         faculty = entry.facultyOverride ?: sub.faculty
                     )
                 )
-                processedSubjects.add(sub.id)
             }
         }
 
-        // 2. Add extra lecture records for this date
-        records.filter { it.isExtra }.forEach { record ->
+        // 2. Add extra or non-timetable lecture records for this date
+        val scheduledIds = schedule.map { it.subjectId }.toSet()
+        records.filter { it.isExtra || !scheduledIds.contains(it.subjectId) }.forEach { record ->
             val pair = subjectsWithStats.find { it.first.id == record.subjectId }
             if (pair != null) {
                 val (sub, stats) = pair
@@ -239,31 +247,11 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                         stats = stats,
                         timetableEntry = null,
                         attendanceRecord = record,
-                        isExtra = true,
+                        isExtra = record.isExtra,
                         startTime = record.startTime ?: "Extra",
                         endTime = record.endTime ?: "",
                         room = record.room ?: "",
                         faculty = record.faculty ?: sub.faculty
-                    )
-                )
-            }
-        }
-
-        // 3. If no schedule exists for this day, fallback to showing registered subjects
-        if (list.isEmpty()) {
-            subjectsWithStats.forEach { (sub, stats) ->
-                val record = records.find { it.subjectId == sub.id }
-                list.add(
-                    LectureItem(
-                        subject = sub,
-                        stats = stats,
-                        timetableEntry = null,
-                        attendanceRecord = record,
-                        isExtra = record?.isExtra ?: false,
-                        startTime = record?.startTime ?: "",
-                        endTime = record?.endTime ?: "",
-                        room = record?.room ?: "",
-                        faculty = sub.faculty
                     )
                 )
             }
@@ -275,69 +263,110 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private fun refreshMonthData(monthCal: Calendar) {
         viewModelScope.launch {
             val allRecords = repository.getAllAttendance()
-            val allSubjects = repository.getAllSubjects()
+            val allTimetable = repository.getAllTimetable()
 
             val map = mutableMapOf<Long, DayAttendanceStats>()
-            val recordsByDate = allRecords.groupBy { it.date }
 
-            recordsByDate.forEach { (date, records) ->
-                val attended = records.count { it.status == AttendanceStatus.PRESENT }
-                val missed = records.count { it.status == AttendanceStatus.ABSENT }
-                val off = records.count { it.status == AttendanceStatus.OFF }
-                val total = attended + missed + off
+            val cal = (monthCal.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+            }
+            val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-                val status = when {
-                    total == 0 -> DayAttendanceState.NOT_MARKED
-                    attended > 0 && missed == 0 && off == 0 -> DayAttendanceState.ATTENDED
-                    missed > 0 && attended == 0 && off == 0 -> DayAttendanceState.MISSED
-                    off > 0 && attended == 0 && missed == 0 -> DayAttendanceState.OFF
-                    else -> DayAttendanceState.MIXED
+            var attendedDaysCount = 0
+            var missedDaysCount = 0
+            var offDaysCount = 0
+            var mixedDaysCount = 0
+            var notMarkedDaysCount = 0
+
+            var monthAttendedCount = 0
+            var monthMissedCount = 0
+            var monthOffCount = 0
+
+            for (dayNum in 1..daysInMonth) {
+                val dayCal = (monthCal.clone() as Calendar).apply {
+                    set(Calendar.DAY_OF_MONTH, dayNum)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val dayTime = dayCal.timeInMillis
+                val calDay = dayCal.get(Calendar.DAY_OF_WEEK)
+                val dayOfWeekIdx = if (calDay == Calendar.SUNDAY) 6 else calDay - 2
+                val isWeekend = (calDay == Calendar.SATURDAY || calDay == Calendar.SUNDAY)
+
+                val daySchedule = allTimetable.filter { it.dayOfWeek == dayOfWeekIdx }
+                val dayRecords = allRecords.filter { it.date == dayTime }
+
+                val attended = dayRecords.count { it.status == AttendanceStatus.PRESENT }
+                val missed = dayRecords.count { it.status == AttendanceStatus.ABSENT }
+                val off = dayRecords.count { it.status == AttendanceStatus.OFF }
+                val totalRecorded = attended + missed + off
+
+                val status: DayAttendanceState
+                if (isWeekend) {
+                    // Weekends are OFF by default unless explicit classes/records exist
+                    if (daySchedule.isEmpty() && dayRecords.isEmpty()) {
+                        status = DayAttendanceState.OFF
+                    } else if (totalRecorded > 0) {
+                        status = when {
+                            attended > 0 && missed == 0 -> DayAttendanceState.ATTENDED
+                            missed > 0 && attended == 0 -> DayAttendanceState.MISSED
+                            attended > 0 && missed > 0 -> DayAttendanceState.MIXED
+                            else -> DayAttendanceState.OFF
+                        }
+                    } else {
+                        status = DayAttendanceState.NOT_MARKED
+                    }
+                } else {
+                    // Weekdays
+                    if (daySchedule.isEmpty() && dayRecords.isEmpty()) {
+                        status = DayAttendanceState.OFF
+                    } else if (dayRecords.isEmpty()) {
+                        status = DayAttendanceState.NOT_MARKED
+                    } else {
+                        val unrecordedCount = (daySchedule.size - totalRecorded).coerceAtLeast(0)
+                        status = when {
+                            attended > 0 && missed == 0 && unrecordedCount == 0 && off == 0 -> DayAttendanceState.ATTENDED
+                            missed > 0 && attended == 0 && unrecordedCount == 0 && off == 0 -> DayAttendanceState.MISSED
+                            attended > 0 && missed > 0 -> DayAttendanceState.MIXED
+                            off > 0 && attended == 0 && missed == 0 -> DayAttendanceState.OFF
+                            unrecordedCount > 0 && (attended > 0 || missed > 0) -> DayAttendanceState.MIXED
+                            else -> DayAttendanceState.NOT_MARKED
+                        }
+                    }
                 }
 
-                map[date] = DayAttendanceStats(attended, missed, off, total, status)
+                map[dayTime] = DayAttendanceStats(attended, missed, off, totalRecorded, status)
+
+                when (status) {
+                    DayAttendanceState.ATTENDED -> attendedDaysCount++
+                    DayAttendanceState.MISSED -> missedDaysCount++
+                    DayAttendanceState.OFF -> offDaysCount++
+                    DayAttendanceState.MIXED -> mixedDaysCount++
+                    DayAttendanceState.NOT_MARKED -> notMarkedDaysCount++
+                }
+
+                monthAttendedCount += attended
+                monthMissedCount += missed
+                monthOffCount += off
             }
+
             _heatmapData.value = map
 
-            var attendedDays = 0
-            var missedDays = 0
-            var offDays = 0
-            var mixedDays = 0
-            var totalAttended = 0
-            var totalMissed = 0
-            var totalOff = 0
-
-            map.values.forEach { day ->
-                when (day.status) {
-                    DayAttendanceState.ATTENDED -> attendedDays++
-                    DayAttendanceState.MISSED -> missedDays++
-                    DayAttendanceState.OFF -> offDays++
-                    DayAttendanceState.MIXED -> mixedDays++
-                    DayAttendanceState.NOT_MARKED -> {}
-                }
-                totalAttended += day.attended
-                totalMissed += day.missed
-                totalOff += day.off
-            }
-
-            allSubjects.forEach { sub ->
-                totalAttended += sub.manualAttended
-                totalMissed += (sub.manualConducted - sub.manualAttended).coerceAtLeast(0)
-            }
-
-            val totalCollegeDays = attendedDays + missedDays + offDays + mixedDays
-            val totalConducted = totalAttended + totalMissed
-            val pct = if (totalConducted > 0) (totalAttended.toDouble() / totalConducted.toDouble()) * 100.0 else 100.0
+            val totalConducted = monthAttendedCount + monthMissedCount
+            val pct = if (totalConducted > 0) (monthAttendedCount.toDouble() / totalConducted.toDouble()) * 100.0 else 100.0
 
             _calendarSummary.value = CalendarSummaryStats(
-                notMarkedDays = 6,
-                offDays = offDays.coerceAtLeast(map.values.count { it.off > 0 }),
-                missedDays = missedDays,
-                attendedDays = attendedDays,
-                mixedDays = mixedDays,
-                totalCollegeDays = totalCollegeDays,
-                totalAttended = totalAttended,
-                totalMissed = totalMissed,
-                totalOff = totalOff,
+                notMarkedDays = notMarkedDaysCount,
+                offDays = offDaysCount,
+                missedDays = missedDaysCount,
+                attendedDays = attendedDaysCount,
+                mixedDays = mixedDaysCount,
+                totalCollegeDays = attendedDaysCount + missedDaysCount + mixedDaysCount,
+                totalAttended = monthAttendedCount,
+                totalMissed = monthMissedCount,
+                totalOff = monthOffCount,
                 overallPercentage = pct
             )
         }
@@ -604,14 +633,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             loadData()
         }
     }
-
-    private fun getStartOfDay(timestamp: Long): Long {
-        return Calendar.getInstance().apply {
-            timeInMillis = timestamp
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
 }
+
+fun getStartOfDay(timestamp: Long): Long {
+    return Calendar.getInstance().apply {
+        timeInMillis = timestamp
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+}
+
