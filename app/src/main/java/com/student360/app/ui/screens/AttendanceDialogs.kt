@@ -3,6 +3,7 @@
 
 package com.student360.app.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -421,7 +423,7 @@ fun AttendanceSimulatorDialog(
 }
 
 /**
- * Add Scheduled Timetable Lecture Dialog
+ * Add Scheduled Timetable Lecture Dialog (Save & Stay Open for continuous additions)
  */
 @Composable
 fun AddLectureDialog(
@@ -430,9 +432,10 @@ fun AddLectureDialog(
     onDismiss: () -> Unit,
     onSave: (Int, Int, String, String, String, String?, Int?) -> Unit
 ) {
+    val context = LocalContext.current
     val colors = LocalAppColors.current
     var selectedSubjectId by remember { mutableStateOf(subjects.firstOrNull()?.id ?: 0) }
-    var selectedDay by remember { mutableStateOf(initialDay) }
+    var selectedDay by remember(initialDay) { mutableStateOf(initialDay) }
     var startTime by remember { mutableStateOf("09:00") }
     var endTime by remember { mutableStateOf("10:00") }
     var room by remember { mutableStateOf("") }
@@ -442,6 +445,18 @@ fun AddLectureDialog(
 
     val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     val selectedSubject = subjects.find { it.id == selectedSubjectId } ?: subjects.firstOrNull()
+
+    fun advanceTimeToNextSlot(currentEnd: String): Pair<String, String> {
+        return try {
+            val parts = currentEnd.split(":")
+            val endHour = parts[0].toInt()
+            val nextStart = String.format(Locale.US, "%02d:00", endHour)
+            val nextEnd = String.format(Locale.US, "%02d:00", (endHour + 1).coerceAtMost(23))
+            nextStart to nextEnd
+        } catch (e: Exception) {
+            "09:00" to "10:00"
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -574,6 +589,7 @@ fun AddLectureDialog(
         confirmButton = {
             Button(
                 onClick = {
+                    val savedSub = selectedSubject?.name ?: "Lecture"
                     onSave(
                         selectedSubjectId,
                         selectedDay,
@@ -583,6 +599,13 @@ fun AddLectureDialog(
                         faculty.ifBlank { null },
                         notifyMinutes
                     )
+                    // Reset fields for the next lecture while keeping dialog OPEN
+                    val (nextStart, nextEnd) = advanceTimeToNextSlot(endTime)
+                    startTime = nextStart
+                    endTime = nextEnd
+                    room = ""
+                    faculty = ""
+                    Toast.makeText(context, "Saved $savedSub! Ready for next lecture.", Toast.LENGTH_SHORT).show()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                 shape = RoundedCornerShape(10.dp)

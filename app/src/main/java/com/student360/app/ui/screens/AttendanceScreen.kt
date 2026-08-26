@@ -54,7 +54,7 @@ fun AttendanceScreen(
     var isEditMode by remember { mutableStateOf(false) }
     var selectedDayTab by remember { mutableStateOf(0) } // 0 = Mon .. 6 = Sun
 
-    var showAddMultipleSubjectsSheet by remember { mutableStateOf(false) }
+    var showAddLectureDialog by remember { mutableStateOf(false) }
     var entryToDelete by remember { mutableStateOf<TimetableEntry?>(null) }
     var selectedEntryForPicker by remember { mutableStateOf<TimetableEntry?>(null) }
     var selectedEntryForDetail by remember { mutableStateOf<TimetableEntry?>(null) }
@@ -134,10 +134,10 @@ fun AttendanceScreen(
                         )
                     }
 
-                    // In Edit Mode: + Button to add multiple subjects
+                    // In Edit Mode: + Button to add lectures (Save and Stay)
                     if (isEditMode) {
                         IconButton(
-                            onClick = { showAddMultipleSubjectsSheet = true },
+                            onClick = { showAddLectureDialog = true },
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
@@ -146,7 +146,7 @@ fun AttendanceScreen(
                         ) {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "Add Subjects",
+                                contentDescription = "Add Lecture",
                                 tint = colors.textPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -285,14 +285,14 @@ fun AttendanceScreen(
                         }
 
                         Button(
-                            onClick = { showAddMultipleSubjectsSheet = true },
+                            onClick = { showAddLectureDialog = true },
                             colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("+ Add Subjects", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                            Text("+ Add Lecture", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
                         }
                     }
 
@@ -315,13 +315,13 @@ fun AttendanceScreen(
                                     color = colors.textSecondary
                                 )
                                 Button(
-                                    onClick = { showAddMultipleSubjectsSheet = true },
+                                    onClick = { showAddLectureDialog = true },
                                     shape = RoundedCornerShape(10.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Add Subjects", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                                    Text("Add Lecture", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
                                 }
                             }
                         }
@@ -487,7 +487,7 @@ fun AttendanceScreen(
                                                     .border(BorderStroke(0.5.dp, colors.border), RoundedCornerShape(8.dp))
                                                     .clickable {
                                                         selectedDayTab = dayIdx
-                                                        showAddMultipleSubjectsSheet = true
+                                                        showAddLectureDialog = true
                                                     }
                                             )
                                         }
@@ -500,21 +500,28 @@ fun AttendanceScreen(
             }
         }
 
-        // Add Multiple Subjects BottomSheet
-        if (showAddMultipleSubjectsSheet) {
+        // Add Timetable Lecture Dialog (Save Class saves and stays open for continuous additions)
+        if (showAddLectureDialog) {
             val subjects = subjectsWithStats.map { it.first }
-            val existingInDay = selectedDayTimetable.map { it.subjectId }.toSet()
-            AddMultipleSubjectsBottomSheet(
-                subjects = subjects,
-                dayName = fullDaysOfWeek[selectedDayTab],
-                existingSubjectIdsInDay = existingInDay,
-                onDismiss = { showAddMultipleSubjectsSheet = false },
-                onAddSubjects = { selectedSubjectIds ->
-                    scheduleViewModel.addMultipleTimetableEntries(selectedSubjectIds, selectedDayTab)
-                    showAddMultipleSubjectsSheet = false
-                    Toast.makeText(context, "Added ${selectedSubjectIds.size} subject(s)", Toast.LENGTH_SHORT).show()
-                }
-            )
+            if (subjects.isEmpty()) {
+                AlertDialog(
+                    onDismissRequest = { showAddLectureDialog = false },
+                    containerColor = colors.card,
+                    title = { Text("No Subjects", color = colors.textPrimary) },
+                    text = { Text("Please create a course in the Subjects tab first.", color = colors.textSecondary) },
+                    confirmButton = { TextButton(onClick = { showAddLectureDialog = false }) { Text("OK", color = colors.accent) } }
+                )
+            } else {
+                AddLectureDialog(
+                    subjects = subjects,
+                    initialDay = selectedDayTab,
+                    onDismiss = { showAddLectureDialog = false },
+                    onSave = { subjectId, day, start, end, room, faculty, alertMin ->
+                        scheduleViewModel.addTimetableEntry(subjectId, day, start, end, room, faculty, alertMin)
+                        // Note: showAddLectureDialog remains true so the user stays inside the dialog!
+                    }
+                )
+            }
         }
 
         // Long-Press Delete Confirmation Dialog

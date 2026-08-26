@@ -495,7 +495,7 @@ fun ScheduleScreen(
                 )
             }
 
-            // Add Lecture Dialog
+            // Add Lecture Dialog (Save Class saves and stays open)
             if (showAddDialog && subjects.isNotEmpty()) {
                 AddLectureDialog(
                     subjects = subjects,
@@ -503,7 +503,6 @@ fun ScheduleScreen(
                     onDismiss = { showAddDialog = false },
                     onSave = { subjectId, day, start, end, room, faculty, alertMin ->
                         viewModel.addTimetableEntry(subjectId, day, start, end, room, faculty, alertMin)
-                        showAddDialog = false
                     }
                 )
             }
