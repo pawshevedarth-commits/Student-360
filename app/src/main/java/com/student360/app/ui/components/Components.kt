@@ -129,14 +129,14 @@ fun ScholarEmblem(
 }
 
 /**
- * Full Student360 / Scholar Logo with Emblem and Wordmark.
+ * Full Student360 Logo with Emblem and Wordmark.
  */
 @Composable
 fun Student360Logo(
     modifier: Modifier = Modifier,
     emblemSize: Dp = 38.dp,
     showWordmark: Boolean = true,
-    tagline: String? = "Academic management platform"
+    tagline: String? = null
 ) {
     val colors = LocalAppColors.current
     Row(
@@ -149,11 +149,16 @@ fun Student360Logo(
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Scholar",
+                        text = "Student",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary,
-                        fontSize = 16.sp
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = "360",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = BrandCyan
                     )
                 }
                 if (tagline != null) {
