@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @file:Suppress("UNUSED_PARAMETER")
 
 package com.student360.app.ui.screens
@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -30,6 +31,7 @@ import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.StudentCard
 import com.student360.app.ui.theme.*
+import kotlinx.coroutines.launch
 import java.util.*
 
 @Composable
@@ -41,6 +43,8 @@ fun AttendanceScreen(
 ) {
     val context = LocalContext.current
     val colors = LocalAppColors.current
+    val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val timetable by scheduleViewModel.timetable.collectAsState()
     val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
@@ -50,7 +54,8 @@ fun AttendanceScreen(
     var isEditMode by remember { mutableStateOf(false) }
     var selectedDayTab by remember { mutableStateOf(0) } // 0 = Mon .. 6 = Sun
 
-    var showAddLectureDialog by remember { mutableStateOf(false) }
+    var showAddMultipleSubjectsSheet by remember { mutableStateOf(false) }
+    var entryToDelete by remember { mutableStateOf<TimetableEntry?>(null) }
     var selectedEntryForPicker by remember { mutableStateOf<TimetableEntry?>(null) }
     var selectedEntryForDetail by remember { mutableStateOf<TimetableEntry?>(null) }
 
@@ -90,7 +95,7 @@ fun AttendanceScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 1. TOP BAR (Student360 | 59.26 | 75 | + | ✏️)
+            // 1. TOP BAR (Student360 | 59.26 | 75 | + | ✏️ or SAVE)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -129,10 +134,10 @@ fun AttendanceScreen(
                         )
                     }
 
-                    // In Edit Mode: + Button to add a new class
+                    // In Edit Mode: + Button to add multiple subjects
                     if (isEditMode) {
                         IconButton(
-                            onClick = { showAddLectureDialog = true },
+                            onClick = { showAddMultipleSubjectsSheet = true },
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
@@ -141,33 +146,58 @@ fun AttendanceScreen(
                         ) {
                             Icon(
                                 Icons.Default.Add,
-                                contentDescription = "Add Lecture",
+                                contentDescription = "Add Subjects",
                                 tint = colors.textPrimary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
-                    }
 
-                    // Pen / Done Edit Mode Toggle Button
-                    IconButton(
-                        onClick = {
-                            isEditMode = !isEditMode
-                            if (!isEditMode) {
-                                Toast.makeText(context, "Timetable saved", Toast.LENGTH_SHORT).show()
+                        // Prominent SAVE Button in Edit Mode
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.accent,
+                            modifier = Modifier
+                                .clickable {
+                                    isEditMode = false
+                                    Toast.makeText(context, "Timetable saved", Toast.LENGTH_SHORT).show()
+                                }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = "Save",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Save",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
                             }
-                        },
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(if (isEditMode) colors.activePill else colors.card)
-                            .border(BorderStroke(1.dp, if (isEditMode) colors.accent else colors.border), CircleShape)
-                    ) {
-                        Icon(
-                            if (isEditMode) Icons.Default.Check else Icons.Default.Edit,
-                            contentDescription = if (isEditMode) "Done" else "Edit Timetable",
-                            tint = if (isEditMode) (if (colors.isDark) Color.White else colors.accent) else colors.textPrimary,
-                            modifier = Modifier.size(17.dp)
-                        )
+                        }
+                    } else {
+                        // Pencil Button in Normal Mode
+                        IconButton(
+                            onClick = { isEditMode = true },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(colors.card)
+                                .border(BorderStroke(1.dp, colors.border), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit Timetable",
+                                tint = colors.textPrimary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -228,7 +258,7 @@ fun AttendanceScreen(
 
             // 3. MAIN CONTENT: NORMAL MATRIX GRID vs. EDIT MODE LIST
             if (isEditMode) {
-                // EDIT MODE: Reorderable list for the selected day (Screenshot 2)
+                // EDIT MODE: Reorderable list for the selected day
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -240,17 +270,30 @@ fun AttendanceScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "${fullDaysOfWeek[selectedDayTab]} Classes",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary
-                        )
-                        Text(
-                            text = "Tap to change • Reorder below",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${fullDaysOfWeek[selectedDayTab]} Classes",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = "Long-press card to delete • Reorder with ▲▼",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary
+                            )
+                        }
+
+                        Button(
+                            onClick = { showAddMultipleSubjectsSheet = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("+ Add Subjects", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                        }
                     }
 
                     if (selectedDayTimetable.isEmpty()) {
@@ -262,22 +305,23 @@ fun AttendanceScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
+                                    .padding(vertical = 28.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Text(
-                                    text = "No lectures on ${fullDaysOfWeek[selectedDayTab]}",
+                                    text = "No lectures scheduled on ${fullDaysOfWeek[selectedDayTab]}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colors.textSecondary
                                 )
-                                OutlinedButton(
-                                    onClick = { showAddLectureDialog = true },
+                                Button(
+                                    onClick = { showAddMultipleSubjectsSheet = true },
                                     shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accent),
-                                    border = BorderStroke(1.dp, colors.border)
+                                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
                                 ) {
-                                    Text("+ Add Lecture", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Add Subjects", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
                                 }
                             }
                         }
@@ -297,7 +341,11 @@ fun AttendanceScreen(
                                     border = BorderStroke(1.dp, colors.border),
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { selectedEntryForPicker = entry }
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .combinedClickable(
+                                            onClick = { selectedEntryForPicker = entry },
+                                            onLongClick = { entryToDelete = entry }
+                                        )
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -311,7 +359,7 @@ fun AttendanceScreen(
                                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            // 6-Dot Drag Handle (Screenshot 2: ⠿)
+                                            // 6-Dot Drag Handle (⠿)
                                             Icon(
                                                 Icons.Default.Menu,
                                                 contentDescription = "Drag handle",
@@ -336,33 +384,40 @@ fun AttendanceScreen(
                                             }
                                         }
 
-                                        // Reorder / Delete Actions
+                                        // Reorder Controls (▲ / ▼)
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
                                             IconButton(
                                                 onClick = { scheduleViewModel.moveEntryUp(selectedDayTab, index) },
                                                 enabled = index > 0,
-                                                modifier = Modifier.size(30.dp)
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (index > 0) colors.elevatedCard else Color.Transparent)
                                             ) {
-                                                Text("▲", color = if (index > 0) colors.accent else colors.textSecondary.copy(alpha = 0.3f), fontSize = 12.sp)
+                                                Text(
+                                                    text = "▲",
+                                                    color = if (index > 0) colors.accent else colors.textSecondary.copy(alpha = 0.25f),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
                                             }
                                             IconButton(
                                                 onClick = { scheduleViewModel.moveEntryDown(selectedDayTab, index) },
                                                 enabled = index < selectedDayTimetable.size - 1,
-                                                modifier = Modifier.size(30.dp)
+                                                modifier = Modifier
+                                                    .size(32.dp)
+                                                    .clip(CircleShape)
+                                                    .background(if (index < selectedDayTimetable.size - 1) colors.elevatedCard else Color.Transparent)
                                             ) {
-                                                Text("▼", color = if (index < selectedDayTimetable.size - 1) colors.accent else colors.textSecondary.copy(alpha = 0.3f), fontSize = 12.sp)
-                                            }
-                                            IconButton(
-                                                onClick = {
-                                                    scheduleViewModel.deleteTimetableEntry(entry)
-                                                    Toast.makeText(context, "Removed $subjectTitle", Toast.LENGTH_SHORT).show()
-                                                },
-                                                modifier = Modifier.size(30.dp)
-                                            ) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = colors.danger, modifier = Modifier.size(16.dp))
+                                                Text(
+                                                    text = "▼",
+                                                    color = if (index < selectedDayTimetable.size - 1) colors.accent else colors.textSecondary.copy(alpha = 0.25f),
+                                                    fontSize = 13.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
                                             }
                                         }
                                     }
@@ -372,7 +427,7 @@ fun AttendanceScreen(
                     }
                 }
             } else {
-                // NORMAL MODE: WEEKLY TIMETABLE MATRIX GRID (Screenshot 1)
+                // NORMAL MODE: WEEKLY TIMETABLE MATRIX GRID
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -398,13 +453,13 @@ fun AttendanceScreen(
                                             val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
                                             val subTitle = sub?.name ?: "Subject"
 
-                                            // Lecture cell: rounded rectangle with lavender/purple background (Screenshot 1)
+                                            // Lecture cell: rounded rectangle with soft lavender background
                                             Box(
                                                 modifier = Modifier
                                                     .weight(1f)
                                                     .height(68.dp)
                                                     .clip(RoundedCornerShape(8.dp))
-                                                    .background(Color(0xFFE8DEFF)) // Soft lavender cell matching reference
+                                                    .background(Color(0xFFE8DEFF))
                                                     .border(BorderStroke(1.dp, Color(0xFFD4C4FA)), RoundedCornerShape(8.dp))
                                                     .clickable { selectedEntryForDetail = entry }
                                                     .padding(horizontal = 3.dp, vertical = 4.dp),
@@ -414,7 +469,7 @@ fun AttendanceScreen(
                                                     text = subTitle,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF261D45), // Dark readable text on lavender cell
+                                                    color = Color(0xFF261D45),
                                                     fontSize = 10.sp,
                                                     lineHeight = 11.sp,
                                                     maxLines = 3,
@@ -432,7 +487,7 @@ fun AttendanceScreen(
                                                     .border(BorderStroke(0.5.dp, colors.border), RoundedCornerShape(8.dp))
                                                     .clickable {
                                                         selectedDayTab = dayIdx
-                                                        showAddLectureDialog = true
+                                                        showAddMultipleSubjectsSheet = true
                                                     }
                                             )
                                         }
@@ -445,29 +500,73 @@ fun AttendanceScreen(
             }
         }
 
-        // Add Lecture Dialog
-        if (showAddLectureDialog) {
+        // Add Multiple Subjects BottomSheet
+        if (showAddMultipleSubjectsSheet) {
             val subjects = subjectsWithStats.map { it.first }
-            if (subjects.isEmpty()) {
-                AlertDialog(
-                    onDismissRequest = { showAddLectureDialog = false },
-                    containerColor = colors.card,
-                    title = { Text("No Subjects", color = colors.textPrimary) },
-                    text = { Text("Please create a course in the Subjects tab first.", color = colors.textSecondary) },
-                    confirmButton = { TextButton(onClick = { showAddLectureDialog = false }) { Text("OK", color = colors.accent) } }
-                )
-            } else {
-                AddLectureDialog(
-                    subjects = subjects,
-                    initialDay = selectedDayTab,
-                    onDismiss = { showAddLectureDialog = false },
-                    onSave = { subjectId, day, start, end, room, faculty, alertMin ->
-                        scheduleViewModel.addTimetableEntry(subjectId, day, start, end, room, faculty, alertMin)
-                        showAddLectureDialog = false
-                        Toast.makeText(context, "Lecture added", Toast.LENGTH_SHORT).show()
+            val existingInDay = selectedDayTimetable.map { it.subjectId }.toSet()
+            AddMultipleSubjectsBottomSheet(
+                subjects = subjects,
+                dayName = fullDaysOfWeek[selectedDayTab],
+                existingSubjectIdsInDay = existingInDay,
+                onDismiss = { showAddMultipleSubjectsSheet = false },
+                onAddSubjects = { selectedSubjectIds ->
+                    scheduleViewModel.addMultipleTimetableEntries(selectedSubjectIds, selectedDayTab)
+                    showAddMultipleSubjectsSheet = false
+                    Toast.makeText(context, "Added ${selectedSubjectIds.size} subject(s)", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        // Long-Press Delete Confirmation Dialog
+        entryToDelete?.let { entry ->
+            val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
+            val subjectTitle = sub?.name ?: "Subject"
+
+            AlertDialog(
+                onDismissRequest = { entryToDelete = null },
+                containerColor = colors.card,
+                titleContentColor = colors.textPrimary,
+                title = {
+                    Text("Delete subject?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text(
+                        "Remove '$subjectTitle' from ${fullDaysOfWeek[selectedDayTab]}'s timetable?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val deletedEntry = entry
+                            scheduleViewModel.deleteTimetableEntry(deletedEntry)
+                            entryToDelete = null
+
+                            // Trigger Undo Snackbar
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Removed $subjectTitle",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    scheduleViewModel.restoreTimetableEntry(deletedEntry)
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.danger),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
                     }
-                )
-            }
+                },
+                dismissButton = {
+                    TextButton(onClick = { entryToDelete = null }) {
+                        Text("Cancel", color = colors.textSecondary)
+                    }
+                }
+            )
         }
 
         // Change Subject / Cell Picker Dialog (Edit Mode Tap)
@@ -522,9 +621,19 @@ fun AttendanceScreen(
                 dismissButton = {
                     TextButton(
                         onClick = {
-                            scheduleViewModel.deleteTimetableEntry(entry)
+                            val deletedEntry = entry
+                            scheduleViewModel.deleteTimetableEntry(deletedEntry)
                             selectedEntryForPicker = null
-                            Toast.makeText(context, "Cleared cell", Toast.LENGTH_SHORT).show()
+                            coroutineScope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Cleared cell",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    scheduleViewModel.restoreTimetableEntry(deletedEntry)
+                                }
+                            }
                         }
                     ) {
                         Text("Clear Cell", color = colors.danger)
@@ -533,7 +642,7 @@ fun AttendanceScreen(
             )
         }
 
-        // Lecture Detail BottomSheet / Dialog (Normal Mode Tap)
+        // Lecture Detail Dialog (Normal Mode Tap)
         selectedEntryForDetail?.let { entry ->
             val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
             AlertDialog(
@@ -580,5 +689,13 @@ fun AttendanceScreen(
                 }
             )
         }
+
+        // Bottom Snackbar Host for Delete Undo
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
     }
 }

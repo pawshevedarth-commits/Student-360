@@ -112,6 +112,50 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun addMultipleTimetableEntries(
+        subjectIds: List<Int>,
+        dayOfWeek: Int
+    ) {
+        if (subjectIds.isEmpty()) return
+        viewModelScope.launch {
+            val existing = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }
+            val standardTimes = listOf(
+                "09:00" to "10:00",
+                "10:00" to "11:00",
+                "11:00" to "12:00",
+                "12:00" to "13:00",
+                "14:00" to "15:00",
+                "15:00" to "16:00",
+                "16:00" to "17:00",
+                "17:00" to "18:00"
+            )
+
+            var nextSlotIndex = existing.size
+            for (subId in subjectIds) {
+                val (startTime, endTime) = standardTimes.getOrElse(nextSlotIndex) {
+                    val startHour = (9 + nextSlotIndex)
+                    String.format(java.util.Locale.US, "%02d:00", startHour) to String.format(java.util.Locale.US, "%02d:00", startHour + 1)
+                }
+                val entry = TimetableEntry(
+                    subjectId = subId,
+                    dayOfWeek = dayOfWeek,
+                    startTime = startTime,
+                    endTime = endTime,
+                    room = "",
+                    facultyOverride = null
+                )
+                repository.insertTimetable(entry)
+                nextSlotIndex++
+            }
+        }
+    }
+
+    fun restoreTimetableEntry(entry: TimetableEntry) {
+        viewModelScope.launch {
+            repository.insertTimetable(entry.copy(id = 0))
+        }
+    }
+
     fun updateTimetableEntry(entry: TimetableEntry) {
         viewModelScope.launch {
             repository.updateTimetable(entry)

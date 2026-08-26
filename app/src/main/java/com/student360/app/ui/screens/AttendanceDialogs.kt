@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -594,4 +596,231 @@ fun AddLectureDialog(
             }
         }
     )
+}
+
+/**
+ * Add Multiple Subjects BottomSheet Dialog for Timetable
+ */
+@Composable
+fun AddMultipleSubjectsBottomSheet(
+    subjects: List<Subject>,
+    dayName: String,
+    existingSubjectIdsInDay: Set<Int> = emptySet(),
+    onDismiss: () -> Unit,
+    onAddSubjects: (List<Int>) -> Unit
+) {
+    val colors = LocalAppColors.current
+    val selectedIds = remember { mutableStateListOf<Int>() }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        contentColor = colors.textPrimary,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 10.dp, bottom = 6.dp)
+                    .width(36.dp)
+                    .height(4.dp)
+                    .background(colors.border, RoundedCornerShape(2.dp))
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Add subjects",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        fontSize = 20.sp
+                    )
+                    if (subjects.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                if (selectedIds.size == subjects.size) {
+                                    selectedIds.clear()
+                                } else {
+                                    selectedIds.clear()
+                                    selectedIds.addAll(subjects.map { it.id })
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = if (selectedIds.size == subjects.size) "Deselect All" else "Select All",
+                                color = colors.accent,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = "Select one or more subjects for $dayName",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                    fontSize = 13.sp
+                )
+            }
+
+            // Subject list
+            if (subjects.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No subjects found. Create subjects in Subjects tab first.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 340.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(subjects.size) { idx ->
+                        val sub = subjects[idx]
+                        val isSelected = selectedIds.contains(sub.id)
+                        val isAlreadyInDay = existingSubjectIdsInDay.contains(sub.id)
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) colors.activePill.copy(alpha = if (colors.isDark) 0.35f else 0.5f) else colors.card,
+                            border = BorderStroke(
+                                width = if (isSelected) 1.5.dp else 1.dp,
+                                color = if (isSelected) colors.accent else colors.border
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (isSelected) {
+                                        selectedIds.remove(sub.id)
+                                    } else {
+                                        selectedIds.add(sub.id)
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = sub.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                            color = colors.textPrimary,
+                                            fontSize = 15.sp
+                                        )
+                                        if (isAlreadyInDay) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = colors.elevatedCard
+                                            ) {
+                                                Text(
+                                                    text = "Already in $dayName",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = colors.textSecondary,
+                                                    fontSize = 10.sp,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    if (sub.code.isNotBlank() || sub.faculty.isNotBlank()) {
+                                        Text(
+                                            text = listOfNotNull(sub.code.ifBlank { null }, sub.faculty.ifBlank { null }).joinToString(" • "),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colors.textSecondary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { checked ->
+                                        if (checked) {
+                                            if (!selectedIds.contains(sub.id)) selectedIds.add(sub.id)
+                                        } else {
+                                            selectedIds.remove(sub.id)
+                                        }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = colors.accent,
+                                        uncheckedColor = colors.textSecondary,
+                                        checkmarkColor = Color.White
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Bottom Sticky Action Bar
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "${selectedIds.size} subject${if (selectedIds.size == 1) "" else "s"} selected",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.textSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+                Button(
+                    onClick = {
+                        onAddSubjects(selectedIds.toList())
+                        onDismiss()
+                    },
+                    enabled = selectedIds.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.accent,
+                        disabledContainerColor = colors.border.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                ) {
+                    Text(
+                        text = if (selectedIds.isEmpty()) "Add subjects" else "Add ${selectedIds.size} subject${if (selectedIds.size == 1) "" else "s"}",
+                        color = if (selectedIds.isNotEmpty()) Color.White else colors.textSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
+            }
+        }
+    }
 }
