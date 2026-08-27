@@ -4,9 +4,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -177,16 +179,26 @@ fun Student360Logo(
 /**
  * Standard Student360 Card with 16dp rounded corners and subtle dynamic theme border.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun StudentCard(
     modifier: Modifier = Modifier,
     backgroundColor: Color = LocalAppColors.current.card,
     borderColor: Color = LocalAppColors.current.border,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val cardModifier = when {
+        onLongClick != null -> modifier.clip(RoundedCornerShape(16.dp)).combinedClickable(
+            onClick = { onClick?.invoke() },
+            onLongClick = onLongClick
+        )
+        onClick != null -> modifier.clip(RoundedCornerShape(16.dp)).clickable { onClick() }
+        else -> modifier
+    }
     Card(
-        modifier = if (onClick != null) modifier.clip(RoundedCornerShape(16.dp)).clickable { onClick() } else modifier,
+        modifier = cardModifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         border = BorderStroke(1.dp, borderColor),

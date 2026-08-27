@@ -190,12 +190,14 @@ fun SubjectsScreen(
                     StudentCard(
                         backgroundColor = colors.card,
                         borderColor = colors.border,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.selectSubjectForDetail(subject)
-                                onNavigateToSubjectDetail(subject)
-                            }
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            viewModel.selectSubjectForDetail(subject)
+                            onNavigateToSubjectDetail(subject)
+                        },
+                        onLongClick = {
+                            subjectToDelete = subject to stats
+                        }
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -234,18 +236,6 @@ fun SubjectsScreen(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = colors.textMuted,
                                     fontSize = 11.sp
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { subjectToDelete = subject to stats },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = colors.textSecondary.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -312,7 +302,14 @@ fun SubjectsScreen(
                                 StudentCard(
                                     backgroundColor = colors.card.copy(alpha = 0.85f),
                                     borderColor = colors.border,
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = {
+                                        viewModel.selectSubjectForDetail(archivedSub)
+                                        onNavigateToSubjectDetail(archivedSub)
+                                    },
+                                    onLongClick = {
+                                        subjectToDelete = archivedSub to archivedStats
+                                    }
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -356,37 +353,20 @@ fun SubjectsScreen(
                                             )
                                         }
 
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        Button(
+                                            onClick = { viewModel.restoreSubject(archivedSub) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                         ) {
-                                            Button(
-                                                onClick = { viewModel.restoreSubject(archivedSub) },
-                                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
-                                                shape = RoundedCornerShape(8.dp),
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Refresh,
-                                                    contentDescription = "Restore",
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Restore", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                            }
-
-                                            IconButton(
-                                                onClick = { subjectToDelete = archivedSub to archivedStats },
-                                                modifier = Modifier.size(32.dp)
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Delete,
-                                                    contentDescription = "Delete",
-                                                    tint = colors.danger.copy(alpha = 0.7f),
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
+                                            Icon(
+                                                Icons.Default.Refresh,
+                                                contentDescription = "Restore",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Restore", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                         }
                                     }
                                 }
