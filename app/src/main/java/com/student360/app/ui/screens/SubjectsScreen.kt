@@ -14,6 +14,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,11 +47,13 @@ fun SubjectsScreen(
 ) {
     val colors = LocalAppColors.current
     val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
+    val archivedSubjectsWithStats by viewModel.archivedSubjectsWithStats.collectAsState()
     val overallStats by viewModel.overallStats.collectAsState()
     val calendarSummary by viewModel.calendarSummary.collectAsState()
 
     var showAddSubjectDialog by remember { mutableStateOf(false) }
     var showSimulatorDialog by remember { mutableStateOf(false) }
+    var subjectToDelete by remember { mutableStateOf<Pair<Subject, com.student360.app.data.repository.SubjectStats>?>(null) }
 
     val overallPct = overallStats?.percentage ?: 100.0
     val targetPct = 75
@@ -229,6 +236,161 @@ fun SubjectsScreen(
                                     fontSize = 11.sp
                                 )
                             }
+
+                            IconButton(
+                                onClick = { subjectToDelete = subject to stats },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = colors.textSecondary.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Archived Subjects Section
+            if (archivedSubjectsWithStats.isNotEmpty()) {
+                item {
+                    var isArchivedExpanded by remember { mutableStateOf(false) }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isArchivedExpanded = !isArchivedExpanded }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "Archived Subjects (${archivedSubjectsWithStats.size})",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                }
+
+                                Icon(
+                                    if (isArchivedExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    tint = colors.textSecondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        if (isArchivedExpanded) {
+                            archivedSubjectsWithStats.forEach { (archivedSub, archivedStats) ->
+                                val archivedTotal = archivedStats.attended + archivedStats.missed
+                                StudentCard(
+                                    backgroundColor = colors.card.copy(alpha = 0.85f),
+                                    borderColor = colors.border,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = archivedSub.name,
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = colors.textPrimary
+                                                )
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = colors.textSecondary.copy(alpha = 0.15f)
+                                                ) {
+                                                    Text(
+                                                        text = "Archived",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = colors.textSecondary,
+                                                        fontSize = 10.sp,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                            Text(
+                                                text = "Preserved: $archivedTotal classes • ${archivedStats.attended} attended • ${String.format(Locale.US, "%.1f", archivedStats.percentage)}%",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = colors.textSecondary,
+                                                fontSize = 11.sp
+                                            )
+                                        }
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Button(
+                                                onClick = { viewModel.restoreSubject(archivedSub) },
+                                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                                shape = RoundedCornerShape(8.dp),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Refresh,
+                                                    contentDescription = "Restore",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Restore", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            }
+
+                                            IconButton(
+                                                onClick = { subjectToDelete = archivedSub to archivedStats },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Delete",
+                                                    tint = colors.danger.copy(alpha = 0.7f),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -253,6 +415,23 @@ fun SubjectsScreen(
                 statsList = subjectsWithStats.map { it.second },
                 initialSelectedIndex = 0,
                 onDismiss = { showSimulatorDialog = false }
+            )
+        }
+
+        // Delete Subject Dialog (Safe Delete vs Permanent Delete)
+        subjectToDelete?.let { (subject, stats) ->
+            DeleteSubjectDialog(
+                subject = subject,
+                stats = stats,
+                onDismiss = { subjectToDelete = null },
+                onSafeDelete = {
+                    viewModel.safeDeleteSubject(subject)
+                    subjectToDelete = null
+                },
+                onPermanentDelete = {
+                    viewModel.permanentlyDeleteSubject(subject)
+                    subjectToDelete = null
+                }
             )
         }
     }

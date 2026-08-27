@@ -71,6 +71,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _subjectsWithStats = MutableStateFlow<List<Pair<Subject, SubjectStats>>>(emptyList())
     val subjectsWithStats: StateFlow<List<Pair<Subject, SubjectStats>>> = _subjectsWithStats.asStateFlow()
 
+    private val _archivedSubjectsWithStats = MutableStateFlow<List<Pair<Subject, SubjectStats>>>(emptyList())
+    val archivedSubjectsWithStats: StateFlow<List<Pair<Subject, SubjectStats>>> = _archivedSubjectsWithStats.asStateFlow()
+
+    private val _allSubjectsWithStats = MutableStateFlow<List<Pair<Subject, SubjectStats>>>(emptyList())
+    val allSubjectsWithStats: StateFlow<List<Pair<Subject, SubjectStats>>> = _allSubjectsWithStats.asStateFlow()
+
     private val _overallStats = MutableStateFlow<OverallStats?>(null)
     val overallStats: StateFlow<OverallStats?> = _overallStats.asStateFlow()
 
@@ -115,13 +121,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     fun loadData() {
         viewModelScope.launch {
             repository.subjectsFlow.collectLatest { subjects ->
-                val list = subjects.map { subject ->
+                val allList = subjects.map { subject ->
                     val stats = repository.getSubjectStats(subject.id)
                     subject to stats
                 }
-                _subjectsWithStats.value = list
+                _allSubjectsWithStats.value = allList
+                _subjectsWithStats.value = allList.filter { !it.first.isArchived }
+                _archivedSubjectsWithStats.value = allList.filter { it.first.isArchived }
                 _overallStats.value = repository.getOverallAttendanceStats()
-                refreshTodayLectures(_selectedDate.value, list, _selectedDateSchedule.value, _selectedDateRecords.value)
+                refreshTodayLectures(_selectedDate.value, allList, _selectedDateSchedule.value, _selectedDateRecords.value)
             }
         }
         viewModelScope.launch {
@@ -613,14 +621,35 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun deleteSubject(subject: Subject) {
+    fun safeDeleteSubject(subject: Subject) {
         viewModelScope.launch {
-            repository.deleteSubject(subject)
+            repository.archiveSubject(subject.id)
             if (_selectedSubject.value?.id == subject.id) {
                 clearSelectedSubject()
             }
             loadData()
         }
+    }
+
+    fun restoreSubject(subject: Subject) {
+        viewModelScope.launch {
+            repository.restoreSubject(subject.id)
+            loadData()
+        }
+    }
+
+    fun permanentlyDeleteSubject(subject: Subject) {
+        viewModelScope.launch {
+            repository.permanentlyDeleteSubject(subject.id)
+            if (_selectedSubject.value?.id == subject.id) {
+                clearSelectedSubject()
+            }
+            loadData()
+        }
+    }
+
+    fun deleteSubject(subject: Subject) {
+        safeDeleteSubject(subject)
     }
 
     fun updateGlobalTarget(target: Double) {

@@ -25,10 +25,22 @@ class StudentRepository(context: Context) {
 
     // Subjects Methods
     val subjectsFlow: Flow<List<Subject>> = subjectDao.getAllSubjectsFlow()
+    val activeSubjectsFlow: Flow<List<Subject>> = subjectDao.getActiveSubjectsFlow()
+    val archivedSubjectsFlow: Flow<List<Subject>> = subjectDao.getArchivedSubjectsFlow()
     suspend fun getAllSubjects(): List<Subject> = subjectDao.getAllSubjects()
     suspend fun insertSubject(subject: Subject): Long = subjectDao.insertSubject(subject)
     suspend fun updateSubject(subject: Subject) = subjectDao.updateSubject(subject)
     suspend fun deleteSubject(subject: Subject) = subjectDao.deleteSubject(subject)
+    suspend fun archiveSubject(id: Int) = subjectDao.archiveSubject(id)
+    suspend fun restoreSubject(id: Int) = subjectDao.restoreSubject(id)
+    suspend fun permanentlyDeleteSubject(subjectId: Int) {
+        subjectDao.deleteAttendanceBySubjectId(subjectId)
+        timetableDao.deleteTimetableBySubjectId(subjectId)
+        val sub = subjectDao.getSubjectById(subjectId)
+        if (sub != null) {
+            subjectDao.deleteSubject(sub)
+        }
+    }
     suspend fun getSubjectById(id: Int): Subject? = subjectDao.getSubjectById(id)
 
     // Attendance Methods

@@ -25,6 +25,21 @@ interface SubjectDao {
     @Delete
     suspend fun deleteSubject(subject: Subject)
 
+    @Query("UPDATE subjects SET isArchived = 1 WHERE id = :id")
+    suspend fun archiveSubject(id: Int)
+
+    @Query("UPDATE subjects SET isArchived = 0 WHERE id = :id")
+    suspend fun restoreSubject(id: Int)
+
+    @Query("DELETE FROM attendance_records WHERE subjectId = :subjectId")
+    suspend fun deleteAttendanceBySubjectId(subjectId: Int)
+
+    @Query("SELECT * FROM subjects WHERE isArchived = 0")
+    fun getActiveSubjectsFlow(): Flow<List<Subject>>
+
+    @Query("SELECT * FROM subjects WHERE isArchived = 1")
+    fun getArchivedSubjectsFlow(): Flow<List<Subject>>
+
     // Attendance records queries
     @Query("SELECT * FROM attendance_records WHERE subjectId = :subjectId ORDER BY date DESC")
     fun getAttendanceForSubjectFlow(subjectId: Int): Flow<List<AttendanceRecord>>

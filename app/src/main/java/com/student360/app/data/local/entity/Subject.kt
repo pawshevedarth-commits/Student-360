@@ -11,5 +11,6 @@ data class Subject(
     val faculty: String,
     val targetPercentage: Double = 75.0,
     val manualAttended: Int = 0, // Baseline override
-    val manualConducted: Int = 0  // Baseline override
+    val manualConducted: Int = 0, // Baseline override
+    val isArchived: Boolean = false
 )

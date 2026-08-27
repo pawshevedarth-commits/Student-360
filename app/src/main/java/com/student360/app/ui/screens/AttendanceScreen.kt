@@ -54,6 +54,7 @@ fun AttendanceScreen(
 
     val timetable by scheduleViewModel.timetable.collectAsState()
     val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
+    val allSubjectsWithStats by viewModel.allSubjectsWithStats.collectAsState()
     val overallStats by viewModel.overallStats.collectAsState()
     val selectedDate by viewModel.selectedDate.collectAsState()
 
@@ -349,7 +350,7 @@ fun AttendanceScreen(
                         ) {
                             itemsIndexed(currentDayList, key = { _, entry -> entry.id }) { _, entry ->
                                 val isDragging = draggingEntryId == entry.id
-                                val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
+                                val sub = allSubjectsWithStats.find { it.first.id == entry.subjectId }?.first
                                 val subjectTitle = sub?.name ?: "Subject"
 
                                 Surface(
@@ -491,7 +492,7 @@ fun AttendanceScreen(
                                         val entry = dayEntries.getOrNull(slotIdx)
 
                                         if (entry != null) {
-                                            val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
+                                            val sub = allSubjectsWithStats.find { it.first.id == entry.subjectId }?.first
                                             val subTitle = sub?.name ?: "Subject"
 
                                             // Lecture cell: rounded rectangle with soft lavender background
@@ -567,7 +568,7 @@ fun AttendanceScreen(
 
         // Long-Press Delete Confirmation Dialog
         entryToDelete?.let { entry ->
-            val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
+            val sub = allSubjectsWithStats.find { it.first.id == entry.subjectId }?.first
             val subjectTitle = sub?.name ?: "Subject"
 
             AlertDialog(

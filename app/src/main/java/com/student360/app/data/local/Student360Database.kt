@@ -51,6 +51,14 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        try {
+            db.execSQL("ALTER TABLE `subjects` ADD COLUMN `isArchived` INTEGER NOT NULL DEFAULT 0")
+        } catch (_: Exception) {}
+    }
+}
+
 @Database(
     entities = [
         StudentProfile::class,
@@ -67,7 +75,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         Goal::class,
         Alert::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -94,7 +102,7 @@ abstract class Student360Database : RoomDatabase() {
                     Student360Database::class.java,
                     "student360_database"
                 )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

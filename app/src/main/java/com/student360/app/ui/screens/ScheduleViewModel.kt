@@ -28,6 +28,9 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private val _subjects = MutableStateFlow<List<Subject>>(emptyList())
     val subjects: StateFlow<List<Subject>> = _subjects.asStateFlow()
 
+    private val _activeSubjects = MutableStateFlow<List<Subject>>(emptyList())
+    val activeSubjects: StateFlow<List<Subject>> = _activeSubjects.asStateFlow()
+
     private val _timetable = MutableStateFlow<List<TimetableEntry>>(emptyList())
     val timetable: StateFlow<List<TimetableEntry>> = _timetable.asStateFlow()
 
@@ -40,6 +43,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             repository.subjectsFlow.collectLatest {
                 _subjects.value = it
+                _activeSubjects.value = it.filter { sub -> !sub.isArchived }
                 calculateOverallStats()
             }
         }

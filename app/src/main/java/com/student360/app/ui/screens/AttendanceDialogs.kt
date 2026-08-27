@@ -12,6 +12,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -847,3 +850,195 @@ fun AddMultipleSubjectsBottomSheet(
         }
     }
 }
+
+@Composable
+fun DeleteSubjectDialog(
+    subject: Subject,
+    stats: SubjectStats?,
+    onDismiss: () -> Unit,
+    onSafeDelete: () -> Unit,
+    onPermanentDelete: () -> Unit
+) {
+    val colors = LocalAppColors.current
+    var showPermanentWarning by remember { mutableStateOf(false) }
+
+    if (showPermanentWarning) {
+        AlertDialog(
+            onDismissRequest = { showPermanentWarning = false },
+            containerColor = colors.card,
+            titleContentColor = colors.textPrimary,
+            title = {
+                Text("Permanent Delete?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Are you sure you want to permanently erase '${subject.name}'?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        "This will permanently delete all historical attendance records, percentages, and timetable slots for this subject. This action CANNOT be undone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.danger
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPermanentWarning = false
+                        onPermanentDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.danger),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Delete Permanently", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermanentWarning = false }) {
+                    Text("Back", color = colors.textSecondary)
+                }
+            }
+        )
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            containerColor = colors.card,
+            titleContentColor = colors.textPrimary,
+            title = {
+                Text(
+                    text = "Delete Subject",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    // Subject info snippet
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.elevatedCard,
+                        border = BorderStroke(1.dp, colors.border),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = subject.name,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary
+                            )
+                            if (stats != null) {
+                                val total = stats.attended + stats.missed
+                                Text(
+                                    text = "$total classes • ${stats.attended} attended • ${String.format(Locale.US, "%.1f", stats.percentage)}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.textSecondary
+                                )
+                            }
+                        }
+                    }
+
+                    // Option 1: Safe Delete (Recommended)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.activePill.copy(alpha = 0.35f),
+                        border = BorderStroke(1.5.dp, colors.accent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSafeDelete() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = colors.accent,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        text = "Safe Delete",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = colors.accent,
+                                        modifier = Modifier.padding(start = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "Recommended",
+                                            color = Color.White,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Archive from current subjects. All previous attendance, records, and percentages remain 100% intact. Can be restored anytime.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // Option 2: Delete Permanently
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.elevatedCard,
+                        border = BorderStroke(1.dp, colors.border),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showPermanentWarning = true }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = colors.danger,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Delete Permanently",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.danger
+                                )
+                                Text(
+                                    text = "Erase subject and permanently destroy all its historical attendance records and timetables.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel", color = colors.textSecondary)
+                }
+            }
+        )
+    }
+}
+

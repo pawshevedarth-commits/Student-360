@@ -48,10 +48,10 @@ fun SubjectDetailScreen(
     val context = LocalContext.current
     val colors = LocalAppColors.current
 
-    val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
+    val allSubjectsWithStats by viewModel.allSubjectsWithStats.collectAsState()
     val subjectRecords by viewModel.selectedSubjectRecords.collectAsState()
 
-    val currentPair = subjectsWithStats.find { it.first.id == subject.id }
+    val currentPair = allSubjectsWithStats.find { it.first.id == subject.id }
     val currentSubject = currentPair?.first ?: subject
     val stats = currentPair?.second
 
@@ -61,6 +61,7 @@ fun SubjectDetailScreen(
     var editingRecord by remember { mutableStateOf<AttendanceRecord?>(null) }
     var showBaselineDialog by remember { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()) }
 
@@ -149,19 +150,86 @@ fun SubjectDetailScreen(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Percentage Badge Pill
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = colors.card,
-                        border = BorderStroke(1.dp, colors.border)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "${String.format(Locale.US, "%.2f", percentage)} | $targetPct",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = statusColor,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                        )
+                        // Percentage Badge Pill
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.card,
+                            border = BorderStroke(1.dp, colors.border)
+                        ) {
+                            Text(
+                                text = "${String.format(Locale.US, "%.2f", percentage)} | $targetPct",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = statusColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(colors.card)
+                                .border(BorderStroke(1.dp, colors.border), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete Subject",
+                                tint = colors.danger,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (currentSubject.isArchived) {
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = colors.warning.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, colors.warning.copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "This subject is archived",
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.warning,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = "All historical attendance is preserved intact.",
+                                    color = colors.textSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Button(
+                                onClick = {
+                                    viewModel.restoreSubject(currentSubject)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Restore", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
             }
@@ -520,6 +588,25 @@ fun SubjectDetailScreen(
                 subject = currentSubject,
                 historyLogs = historyLogs,
                 onDismiss = { showHistoryDialog = false }
+            )
+        }
+
+        // Delete Subject Dialog (Safe Delete vs Permanent Delete)
+        if (showDeleteDialog) {
+            DeleteSubjectDialog(
+                subject = currentSubject,
+                stats = stats,
+                onDismiss = { showDeleteDialog = false },
+                onSafeDelete = {
+                    viewModel.safeDeleteSubject(currentSubject)
+                    showDeleteDialog = false
+                    onBack()
+                },
+                onPermanentDelete = {
+                    viewModel.permanentlyDeleteSubject(currentSubject)
+                    showDeleteDialog = false
+                    onBack()
+                }
             )
         }
     }

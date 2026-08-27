@@ -28,6 +28,9 @@ interface TimetableDao {
     @Delete
     suspend fun deleteTimetable(entry: TimetableEntry)
 
+    @Query("DELETE FROM timetable_entries WHERE subjectId = :subjectId")
+    suspend fun deleteTimetableBySubjectId(subjectId: Int)
+
     // CollegeDay statuses
     @Query("SELECT * FROM college_days")
     fun getAllCollegeDaysFlow(): Flow<List<CollegeDay>>

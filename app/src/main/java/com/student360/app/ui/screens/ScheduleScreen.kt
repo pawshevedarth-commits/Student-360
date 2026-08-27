@@ -53,6 +53,7 @@ fun ScheduleScreen(
     val colors = LocalAppColors.current
     val timetable by viewModel.timetable.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
+    val activeSubjects by viewModel.activeSubjects.collectAsState()
     val profile by viewModel.profile.collectAsState()
     val overallStats by viewModel.overallStats.collectAsState()
 
@@ -547,9 +548,9 @@ fun ScheduleScreen(
             }
 
             // Add Lecture Dialog (Save Class saves and stays open)
-            if (showAddDialog && subjects.isNotEmpty()) {
+            if (showAddDialog && activeSubjects.isNotEmpty()) {
                 AddLectureDialog(
-                    subjects = subjects,
+                    subjects = activeSubjects,
                     initialDay = addInitialDay,
                     onDismiss = { showAddDialog = false },
                     onSave = { subjectId, day, start, end, room, faculty, alertMin ->
