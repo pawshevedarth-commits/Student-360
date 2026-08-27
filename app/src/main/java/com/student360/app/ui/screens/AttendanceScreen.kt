@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,12 +22,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.StudentCard
@@ -79,6 +85,16 @@ fun AttendanceScreen(
     }
 
     val selectedDayTimetable = timetable.filter { it.dayOfWeek == selectedDayTab }.sortedBy { it.startTime }
+
+    var draggingEntryId by remember { mutableStateOf<Int?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    var currentDayList by remember(selectedDayTimetable) { mutableStateOf(selectedDayTimetable) }
+
+    LaunchedEffect(selectedDayTimetable) {
+        if (draggingEntryId == null) {
+            currentDayList = selectedDayTimetable
+        }
+    }
 
     val maxSlots = remember(timetable) {
         val maxInAnyDay = (0..6).maxOfOrNull { dayIdx ->
@@ -278,7 +294,7 @@ fun AttendanceScreen(
                                 color = colors.textPrimary
                             )
                             Text(
-                                text = "Long-press card to delete • Reorder with ▲▼",
+                                text = "Drag ☰ to reorder • Long-press card to delete",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.textSecondary
                             )
@@ -331,16 +347,25 @@ fun AttendanceScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = 24.dp)
                         ) {
-                            itemsIndexed(selectedDayTimetable) { index, entry ->
+                            itemsIndexed(currentDayList, key = { _, entry -> entry.id }) { _, entry ->
+                                val isDragging = draggingEntryId == entry.id
                                 val sub = subjectsWithStats.find { it.first.id == entry.subjectId }?.first
                                 val subjectTitle = sub?.name ?: "Subject"
 
                                 Surface(
                                     shape = RoundedCornerShape(14.dp),
-                                    color = colors.card,
-                                    border = BorderStroke(1.dp, colors.border),
+                                    color = if (isDragging) colors.activePill else colors.card,
+                                    border = BorderStroke(
+                                        if (isDragging) 2.dp else 1.dp,
+                                        if (isDragging) colors.accent else colors.border
+                                    ),
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .zIndex(if (isDragging) 10f else 1f)
+                                        .graphicsLayer {
+                                            translationY = if (isDragging) dragOffsetY else 0f
+                                        }
+                                        .shadow(if (isDragging) 8.dp else 0.dp, RoundedCornerShape(14.dp))
                                         .clip(RoundedCornerShape(14.dp))
                                         .combinedClickable(
                                             onClick = { selectedEntryForPicker = entry },
@@ -359,13 +384,66 @@ fun AttendanceScreen(
                                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            // 6-Dot Drag Handle (⠿)
-                                            Icon(
-                                                Icons.Default.Menu,
-                                                contentDescription = "Drag handle",
-                                                tint = colors.textSecondary,
-                                                modifier = Modifier.size(20.dp)
-                                            )
+                                            // Three-line Hamburger Drag Handle
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(if (isDragging) colors.accent.copy(alpha = 0.15f) else Color.Transparent)
+                                                    .pointerInput(entry.id, currentDayList.size) {
+                                                        detectDragGestures(
+                                                            onDragStart = {
+                                                                draggingEntryId = entry.id
+                                                                dragOffsetY = 0f
+                                                            },
+                                                            onDrag = { change, dragAmount ->
+                                                                change.consume()
+                                                                dragOffsetY += dragAmount.y
+                                                                val itemHeightPx = 76.dp.toPx()
+                                                                val currentIndex = currentDayList.indexOfFirst { it.id == draggingEntryId }
+                                                                if (currentIndex != -1) {
+                                                                    if (dragOffsetY > itemHeightPx * 0.6f && currentIndex < currentDayList.size - 1) {
+                                                                        val mutable = currentDayList.toMutableList()
+                                                                        val target = currentIndex + 1
+                                                                        val item = mutable.removeAt(currentIndex)
+                                                                        mutable.add(target, item)
+                                                                        currentDayList = mutable
+                                                                        dragOffsetY -= itemHeightPx
+                                                                    } else if (dragOffsetY < -itemHeightPx * 0.6f && currentIndex > 0) {
+                                                                        val mutable = currentDayList.toMutableList()
+                                                                        val target = currentIndex - 1
+                                                                        val item = mutable.removeAt(currentIndex)
+                                                                        mutable.add(target, item)
+                                                                        currentDayList = mutable
+                                                                        dragOffsetY += itemHeightPx
+                                                                    }
+                                                                }
+                                                            },
+                                                            onDragEnd = {
+                                                                val finalIndex = currentDayList.indexOfFirst { it.id == draggingEntryId }
+                                                                val originalIndex = selectedDayTimetable.indexOfFirst { it.id == draggingEntryId }
+                                                                if (finalIndex != -1 && originalIndex != -1 && finalIndex != originalIndex) {
+                                                                    scheduleViewModel.reorderDayEntries(selectedDayTab, originalIndex, finalIndex)
+                                                                }
+                                                                draggingEntryId = null
+                                                                dragOffsetY = 0f
+                                                            },
+                                                            onDragCancel = {
+                                                                currentDayList = selectedDayTimetable
+                                                                draggingEntryId = null
+                                                                dragOffsetY = 0f
+                                                            }
+                                                        )
+                                                    },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Menu,
+                                                    contentDescription = "Drag to reorder",
+                                                    tint = if (isDragging) colors.accent else colors.textSecondary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
 
                                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                                 Text(
@@ -380,43 +458,6 @@ fun AttendanceScreen(
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = colors.textSecondary,
                                                     fontSize = 11.sp
-                                                )
-                                            }
-                                        }
-
-                                        // Reorder Controls (▲ / ▼)
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            IconButton(
-                                                onClick = { scheduleViewModel.moveEntryUp(selectedDayTab, index) },
-                                                enabled = index > 0,
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .background(if (index > 0) colors.elevatedCard else Color.Transparent)
-                                            ) {
-                                                Text(
-                                                    text = "▲",
-                                                    color = if (index > 0) colors.accent else colors.textSecondary.copy(alpha = 0.25f),
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = { scheduleViewModel.moveEntryDown(selectedDayTab, index) },
-                                                enabled = index < selectedDayTimetable.size - 1,
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .background(if (index < selectedDayTimetable.size - 1) colors.elevatedCard else Color.Transparent)
-                                            ) {
-                                                Text(
-                                                    text = "▼",
-                                                    color = if (index < selectedDayTimetable.size - 1) colors.accent else colors.textSecondary.copy(alpha = 0.25f),
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Bold
                                                 )
                                             }
                                         }
@@ -534,11 +575,11 @@ fun AttendanceScreen(
                 containerColor = colors.card,
                 titleContentColor = colors.textPrimary,
                 title = {
-                    Text("Delete subject?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Delete this class?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 },
                 text = {
                     Text(
-                        "Remove '$subjectTitle' from ${fullDaysOfWeek[selectedDayTab]}'s timetable?",
+                        "This class will be removed from your timetable.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary
                     )

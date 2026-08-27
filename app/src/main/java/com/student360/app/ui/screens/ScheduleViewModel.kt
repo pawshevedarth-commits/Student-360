@@ -210,25 +210,16 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val dayEntries = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }.toMutableList()
             if (fromIndex in dayEntries.indices && toIndex in dayEntries.indices) {
+                // Preserve the day's existing time slot schedule
+                val originalTimes = dayEntries.map { it.startTime to it.endTime }
                 val item = dayEntries.removeAt(fromIndex)
                 dayEntries.add(toIndex, item)
 
-                // Reassign time slots sequentially
-                val standardTimes = listOf(
-                    "09:00" to "10:00",
-                    "10:00" to "11:00",
-                    "11:00" to "12:00",
-                    "12:00" to "13:00",
-                    "14:00" to "15:00",
-                    "15:00" to "16:00",
-                    "16:00" to "17:00"
-                )
-
                 dayEntries.forEachIndexed { i, entry ->
-                    val (start, end) = standardTimes.getOrElse(i) {
-                        "${9 + i}:00" to "${10 + i}:00"
+                    val (start, end) = originalTimes[i]
+                    if (entry.startTime != start || entry.endTime != end) {
+                        repository.updateTimetable(entry.copy(startTime = start, endTime = end))
                     }
-                    repository.updateTimetable(entry.copy(startTime = start, endTime = end))
                 }
             }
         }

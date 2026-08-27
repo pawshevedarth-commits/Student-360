@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @file:Suppress("UNUSED_PARAMETER")
 
 package com.student360.app.ui.screens
@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,17 +21,22 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.local.entity.TimetableEntry
@@ -70,6 +77,17 @@ fun ScheduleScreen(
     }
 
     val selectedDayList = timetable.filter { it.dayOfWeek == selectedDayTab }.sortedBy { it.startTime }
+
+    var entryToDelete by remember { mutableStateOf<TimetableEntry?>(null) }
+    var draggingEntryId by remember { mutableStateOf<Int?>(null) }
+    var dragOffsetY by remember { mutableStateOf(0f) }
+    var currentDayList by remember(selectedDayList) { mutableStateOf(selectedDayList) }
+
+    LaunchedEffect(selectedDayList) {
+        if (draggingEntryId == null) {
+            currentDayList = selectedDayList
+        }
+    }
 
     Scaffold(
         containerColor = colors.bg,
@@ -235,17 +253,29 @@ fun ScheduleScreen(
                             }
                         }
                     } else {
-                        items(selectedDayList.size) { index ->
-                            val entry = selectedDayList[index]
+                        items(currentDayList.size, key = { currentDayList[it].id }) { index ->
+                            val entry = currentDayList[index]
+                            val isDragging = draggingEntryId == entry.id
                             val subject = subjects.find { it.id == entry.subjectId }
                             val subName = subject?.name ?: "Unknown Subject"
 
                             StudentCard(
-                                backgroundColor = CardDark,
-                                borderColor = BorderDark
+                                backgroundColor = if (isDragging) colors.activePill else CardDark,
+                                borderColor = if (isDragging) colors.accent else BorderDark,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .zIndex(if (isDragging) 10f else 1f)
+                                    .graphicsLayer {
+                                        translationY = if (isDragging) dragOffsetY else 0f
+                                    }
+                                    .shadow(if (isDragging) 8.dp else 0.dp, RoundedCornerShape(12.dp))
+                                    .combinedClickable(
+                                        onClick = { selectedLectureDetail = entry },
+                                        onLongClick = { entryToDelete = entry }
+                                    )
                             ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
@@ -254,60 +284,81 @@ fun ScheduleScreen(
                                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        // 6-dot drag gripper icon
-                                        Column(
-                                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                                            modifier = Modifier.padding(start = 4.dp)
-                                        ) {
-                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                Box(modifier = Modifier.size(3.dp).background(SecondaryText, CircleShape))
-                                                Box(modifier = Modifier.size(3.dp).background(SecondaryText, CircleShape))
-                                            }
-                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                Box(modifier = Modifier.size(3.dp).background(SecondaryText, CircleShape))
-                                                Box(modifier = Modifier.size(3.dp).background(SecondaryText, CircleShape))
-                                            }
-                                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                Box(modifier = Modifier.size(3.dp).background(SecondaryText, CircleShape))
-                                                Box(modifier = Modifier.size(3.dp).background(SecondaryText, CircleShape))
-                                            }
-                                        }
-
-                                        Text(
-                                            text = subName,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = PrimaryText,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-
-                                    // Up, Down, Delete buttons
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        IconButton(
-                                            onClick = { viewModel.moveEntryUp(selectedDayTab, index) },
-                                            enabled = index > 0,
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Text("▲", color = if (index > 0) PrimaryText else SecondaryText.copy(alpha = 0.3f), fontSize = 12.sp)
-                                        }
-                                        IconButton(
-                                            onClick = { viewModel.moveEntryDown(selectedDayTab, index) },
-                                            enabled = index < selectedDayList.size - 1,
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Text("▼", color = if (index < selectedDayList.size - 1) PrimaryText else SecondaryText.copy(alpha = 0.3f), fontSize = 12.sp)
-                                        }
-                                        IconButton(
-                                            onClick = { viewModel.deleteTimetableEntry(entry) },
-                                            modifier = Modifier.size(32.dp)
+                                        // 3-Line Hamburger Drag Handle
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (isDragging) colors.accent.copy(alpha = 0.15f) else Color.Transparent)
+                                                .pointerInput(entry.id, currentDayList.size) {
+                                                    detectDragGestures(
+                                                        onDragStart = {
+                                                            draggingEntryId = entry.id
+                                                            dragOffsetY = 0f
+                                                        },
+                                                        onDrag = { change, dragAmount ->
+                                                            change.consume()
+                                                            dragOffsetY += dragAmount.y
+                                                            val itemHeightPx = 64.dp.toPx()
+                                                            val currentIndex = currentDayList.indexOfFirst { it.id == draggingEntryId }
+                                                            if (currentIndex != -1) {
+                                                                if (dragOffsetY > itemHeightPx * 0.6f && currentIndex < currentDayList.size - 1) {
+                                                                    val mutable = currentDayList.toMutableList()
+                                                                    val target = currentIndex + 1
+                                                                    val item = mutable.removeAt(currentIndex)
+                                                                    mutable.add(target, item)
+                                                                    currentDayList = mutable
+                                                                    dragOffsetY -= itemHeightPx
+                                                                } else if (dragOffsetY < -itemHeightPx * 0.6f && currentIndex > 0) {
+                                                                    val mutable = currentDayList.toMutableList()
+                                                                    val target = currentIndex - 1
+                                                                    val item = mutable.removeAt(currentIndex)
+                                                                    mutable.add(target, item)
+                                                                    currentDayList = mutable
+                                                                    dragOffsetY += itemHeightPx
+                                                                }
+                                                            }
+                                                        },
+                                                        onDragEnd = {
+                                                            val finalIndex = currentDayList.indexOfFirst { it.id == draggingEntryId }
+                                                            val originalIndex = selectedDayList.indexOfFirst { it.id == draggingEntryId }
+                                                            if (finalIndex != -1 && originalIndex != -1 && finalIndex != originalIndex) {
+                                                                viewModel.reorderDayEntries(selectedDayTab, originalIndex, finalIndex)
+                                                            }
+                                                            draggingEntryId = null
+                                                            dragOffsetY = 0f
+                                                        },
+                                                        onDragCancel = {
+                                                            currentDayList = selectedDayList
+                                                            draggingEntryId = null
+                                                            dragOffsetY = 0f
+                                                        }
+                                                    )
+                                                },
+                                            contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = "Delete",
-                                                tint = DangerRed.copy(alpha = 0.8f),
-                                                modifier = Modifier.size(16.dp)
+                                                Icons.Default.Menu,
+                                                contentDescription = "Drag to reorder",
+                                                tint = if (isDragging) colors.accent else SecondaryText,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+
+                                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                            Text(
+                                                text = subName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = PrimaryText,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "⏰ ${entry.startTime} – ${entry.endTime}" + if (entry.room.isNotBlank()) " • Room ${entry.room}" else "",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = SecondaryText,
+                                                fontSize = 11.sp
                                             )
                                         }
                                     }
@@ -503,6 +554,42 @@ fun ScheduleScreen(
                     onDismiss = { showAddDialog = false },
                     onSave = { subjectId, day, start, end, room, faculty, alertMin ->
                         viewModel.addTimetableEntry(subjectId, day, start, end, room, faculty, alertMin)
+                    }
+                )
+            }
+
+            // Long-Press Delete Confirmation Dialog
+            entryToDelete?.let { entry ->
+                AlertDialog(
+                    onDismissRequest = { entryToDelete = null },
+                    containerColor = colors.card,
+                    titleContentColor = colors.textPrimary,
+                    title = {
+                        Text("Delete this class?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    },
+                    text = {
+                        Text(
+                            "This class will be removed from your timetable.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary
+                        )
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.deleteTimetableEntry(entry)
+                                entryToDelete = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.danger),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { entryToDelete = null }) {
+                            Text("Cancel", color = colors.textSecondary)
+                        }
                     }
                 )
             }
