@@ -276,11 +276,12 @@ fun Student360Wordmark(
 }
 
 /**
- * Standardized Top App Header across screens (matching reference: Student360 | 57.41 | 75 | +)
+ * Standardized Contextual Screen Header across screens (e.g. [Title]  85.71% | 75%  [+])
+ * Never duplicates the global Student360 wordmark.
  */
 @Composable
 fun StudentScreenHeader(
-    title: String = "Student360",
+    title: String = "",
     overallPercentage: Double = 100.0,
     targetPercentage: Int = 75,
     onAddClick: (() -> Unit)? = null,
@@ -296,16 +297,11 @@ fun StudentScreenHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalArrangement = if (title.isNotBlank()) Arrangement.SpaceBetween else Arrangement.End,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (title == "Student360") {
-            Student360Wordmark(
-                fontSize = 20.sp,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-        } else {
+        if (title.isNotBlank()) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
@@ -316,21 +312,21 @@ fun StudentScreenHeader(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.width(8.dp))
         }
-        Spacer(modifier = Modifier.width(8.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            // Pill Badge: 57.41 | 75
+            // Pill Badge: 57.41% | 75%
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = colors.card,
                 border = BorderStroke(1.dp, colors.border)
             ) {
                 Text(
-                    text = "${String.format(Locale.US, "%.2f", overallPercentage)} | $targetPercentage",
+                    text = "${String.format(Locale.US, "%.2f", overallPercentage)}% | $targetPercentage%",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = statusColor,

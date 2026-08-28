@@ -112,16 +112,16 @@ fun AttendanceScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 1. TOP BAR (Student360 | 59.26 | 75 | + | ✏️ or SAVE)
+            // 1. TOP BAR (Timetable | 59.26% | 75% | + | ✏️ or SAVE)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Student360",
+                    text = "Timetable",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = colors.textPrimary,
@@ -136,14 +136,14 @@ fun AttendanceScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Attendance Pill: 57.41 | 75
+                    // Attendance Pill: 57.41% | 75%
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = colors.card,
                         border = BorderStroke(1.dp, colors.border)
                     ) {
                         Text(
-                            text = "${String.format(Locale.US, "%.2f", overallPct)} | $targetPct",
+                            text = "${String.format(Locale.US, "%.2f", overallPct)}% | $targetPct%",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = overallStatusColor,

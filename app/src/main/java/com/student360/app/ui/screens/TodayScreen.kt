@@ -87,10 +87,10 @@ fun TodayScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // 1. Top Header: Student360 | 57.41 | 75 | +
+            // 1. Top Header: Today | 57.41% | 75% | +
             item {
                 StudentScreenHeader(
-                    title = "Student360",
+                    title = "Today",
                     overallPercentage = overallPct,
                     targetPercentage = targetPct,
                     onAddClick = { showAddExtraDialog = true }

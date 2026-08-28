@@ -96,10 +96,10 @@ fun CalendarScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Top App Header
+            // Attendance Summary Badge Pill Row
             item {
                 StudentScreenHeader(
-                    title = "Student360",
+                    title = "",
                     overallPercentage = summary.overallPercentage,
                     targetPercentage = targetPct
                 )
