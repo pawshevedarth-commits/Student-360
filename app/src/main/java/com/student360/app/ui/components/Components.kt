@@ -30,10 +30,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.student360.app.ui.theme.*
@@ -232,6 +236,46 @@ fun ElevatedStudentCard(
 }
 
 /**
+ * Modern, clean, text-based Student360 wordmark for main in-app headers.
+ * "Student" in dark/navy primary text color, "360" in primary blue accent color.
+ */
+@Composable
+fun Student360Wordmark(
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = 21.sp,
+    fontWeight: FontWeight = FontWeight.Bold
+) {
+    val colors = LocalAppColors.current
+    Text(
+        text = buildAnnotatedString {
+            withStyle(
+                style = SpanStyle(
+                    color = colors.textPrimary,
+                    fontWeight = fontWeight
+                )
+            ) {
+                append("Student")
+            }
+            withStyle(
+                style = SpanStyle(
+                    color = PrimaryBlue,
+                    fontWeight = fontWeight
+                )
+            ) {
+                append("360")
+            }
+        },
+        style = MaterialTheme.typography.titleLarge.copy(
+            letterSpacing = (-0.3).sp,
+            lineHeight = fontSize
+        ),
+        fontSize = fontSize,
+        maxLines = 1,
+        modifier = modifier
+    )
+}
+
+/**
  * Standardized Top App Header across screens (matching reference: Student360 | 57.41 | 75 | +)
  */
 @Composable
@@ -256,16 +300,23 @@ fun StudentScreenHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = colors.textPrimary,
-            fontSize = 20.sp,
-            modifier = Modifier.weight(1f, fill = false),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        if (title == "Student360") {
+            Student360Wordmark(
+                fontSize = 20.sp,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        } else {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.textPrimary,
+                fontSize = 20.sp,
+                modifier = Modifier.weight(1f, fill = false),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
         Spacer(modifier = Modifier.width(8.dp))
 
         Row(

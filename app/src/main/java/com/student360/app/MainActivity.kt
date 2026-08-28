@@ -218,18 +218,7 @@ fun MainShell(repository: StudentRepository) {
             topBar = {
                 TopAppBar(
                     title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Student360Emblem(size = 24.dp)
-                            Text(
-                                text = "Student360",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = colors.textPrimary
-                            )
-                        }
+                        Student360Wordmark(fontSize = 21.sp)
                     },
                     navigationIcon = {
                         IconButton(
