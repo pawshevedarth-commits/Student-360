@@ -14,8 +14,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
+import com.student360.app.ui.screens.DayAttendanceState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -443,7 +446,69 @@ fun QuickAttendanceRoundButton(
 }
 
 /**
- * Standardized Day Status Banner (Missed / Attended / Off / Clear)
+ * Individual action item (Clear, Off, Miss, Att) inside DayStatusBanner.
+ * Displays a round icon button with a label underneath, matching the reference design.
+ */
+@Composable
+private fun DayStatusActionItem(
+    label: String,
+    isSelected: Boolean,
+    activeColor: Color,
+    onClick: () -> Unit,
+    buttonSize: Dp,
+    modifier: Modifier = Modifier,
+    iconContent: @Composable (Color) -> Unit
+) {
+    val colors = LocalAppColors.current
+    val currentIconColor = if (isSelected) activeColor else colors.textSecondary.copy(alpha = 0.8f)
+    val buttonBgColor = if (isSelected) {
+        activeColor.copy(alpha = if (colors.isDark) 0.20f else 0.12f)
+    } else {
+        if (colors.isDark) colors.elevatedCard.copy(alpha = 0.5f) else colors.surface
+    }
+    val buttonBorderColor = if (isSelected) {
+        activeColor
+    } else {
+        colors.border
+    }
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = buttonBgColor,
+            border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, buttonBorderColor),
+            modifier = Modifier
+                .size(buttonSize)
+                .clip(CircleShape)
+                .clickable { onClick() }
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                iconContent(currentIconColor)
+            }
+        }
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) activeColor else colors.textSecondary,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Standardized Day Status Component matching the reference design.
+ * Features a status indicator dot, "Today's status" title, current state ("Not marked", "Attended",
+ * "Missed", "Off"), selected date, and 4 circular action buttons (Clear, Off, Miss, Att).
  */
 @Composable
 fun DayStatusBanner(
@@ -453,101 +518,305 @@ fun DayStatusBanner(
     onMarkAllOff: () -> Unit,
     onMarkAllMissed: () -> Unit,
     onMarkAllAttended: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentState: DayAttendanceState? = null,
+    selectedDateText: String? = null
 ) {
     val colors = LocalAppColors.current
+
+    // Infer state if not explicitly passed
+    val effectiveState = currentState ?: when (statusTitle.trim().lowercase()) {
+        "attended" -> DayAttendanceState.ATTENDED
+        "missed" -> DayAttendanceState.MISSED
+        "off" -> DayAttendanceState.OFF
+        "mixed" -> DayAttendanceState.MIXED
+        else -> DayAttendanceState.NOT_MARKED
+    }
+
+    val effectiveDotColor = when (effectiveState) {
+        DayAttendanceState.ATTENDED -> colors.success
+        DayAttendanceState.MISSED -> colors.danger
+        DayAttendanceState.OFF -> colors.warning
+        DayAttendanceState.MIXED -> colors.accent
+        DayAttendanceState.NOT_MARKED -> if (statusDotColor != Color.Unspecified) statusDotColor else colors.textSecondary.copy(alpha = 0.45f)
+    }
+
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = colors.elevatedCard,
+        color = colors.card,
         border = BorderStroke(1.dp, colors.border),
+        shadowElevation = if (colors.isDark) 0.dp else 1.5.dp,
         modifier = modifier.fillMaxWidth()
     ) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-            Row(
-                modifier = Modifier.weight(1f, fill = false),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .background(statusDotColor, CircleShape)
-                )
-                Column(modifier = Modifier.weight(1f, fill = false)) {
-                    Text(
-                        text = "Day status:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.textSecondary,
-                        fontSize = 11.sp,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = statusTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary,
-                        fontSize = 15.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(6.dp))
+            val isNarrow = maxWidth < 340.dp
+            val isUltraNarrow = maxWidth < 280.dp
+            val buttonSize = if (isNarrow) 36.dp else 40.dp
+            val buttonSpacing = if (isNarrow) 6.dp else 10.dp
 
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (isUltraNarrow) {
+                // Stacked layout for very constrained widths
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    QuickAttendanceRoundButton(
-                        symbol = "⊘",
-                        isSelected = false,
-                        activeColor = colors.textSecondary,
-                        onClick = onClearAll
-                    )
-                    Text("Clear", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(effectiveDotColor, CircleShape)
+                        )
+                        Column {
+                            Text(
+                                text = "Today's status",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                                fontSize = 11.sp,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = statusTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                fontSize = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DayStatusActionItem(
+                            label = "Clear",
+                            isSelected = false,
+                            activeColor = colors.accent,
+                            buttonSize = buttonSize,
+                            onClick = onClearAll,
+                            iconContent = { color ->
+                                Canvas(modifier = Modifier.size(16.dp)) {
+                                    val strokeW = 1.8.dp.toPx()
+                                    val r = size.minDimension / 2 - strokeW / 2
+                                    drawCircle(color = color, radius = r, style = Stroke(width = strokeW))
+                                    val offset = r * 0.7071f
+                                    drawLine(
+                                        color = color,
+                                        start = Offset(center.x - offset, center.y - offset),
+                                        end = Offset(center.x + offset, center.y + offset),
+                                        strokeWidth = strokeW,
+                                        cap = StrokeCap.Round
+                                    )
+                                }
+                            }
+                        )
+
+                        DayStatusActionItem(
+                            label = "Off",
+                            isSelected = (effectiveState == DayAttendanceState.OFF),
+                            activeColor = colors.warning,
+                            buttonSize = buttonSize,
+                            onClick = onMarkAllOff,
+                            iconContent = { color ->
+                                Canvas(modifier = Modifier.size(16.dp)) {
+                                    val strokeW = 2.dp.toPx()
+                                    val halfLen = size.width * 0.34f
+                                    drawLine(
+                                        color = color,
+                                        start = Offset(center.x - halfLen, center.y),
+                                        end = Offset(center.x + halfLen, center.y),
+                                        strokeWidth = strokeW,
+                                        cap = StrokeCap.Round
+                                    )
+                                }
+                            }
+                        )
+
+                        DayStatusActionItem(
+                            label = "Miss",
+                            isSelected = (effectiveState == DayAttendanceState.MISSED),
+                            activeColor = colors.danger,
+                            buttonSize = buttonSize,
+                            onClick = onMarkAllMissed,
+                            iconContent = { color ->
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Miss",
+                                    tint = color,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+
+                        DayStatusActionItem(
+                            label = "Att",
+                            isSelected = (effectiveState == DayAttendanceState.ATTENDED),
+                            activeColor = colors.success,
+                            buttonSize = buttonSize,
+                            onClick = onMarkAllAttended,
+                            iconContent = { color ->
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Att",
+                                    tint = color,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
                 }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+            } else {
+                // Standard responsive horizontal layout matching reference
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    QuickAttendanceRoundButton(
-                        symbol = "—",
-                        isSelected = false,
-                        activeColor = colors.warning,
-                        onClick = onMarkAllOff
-                    )
-                    Text("Off", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    QuickAttendanceRoundButton(
-                        symbol = "✕",
-                        isSelected = false,
-                        activeColor = colors.danger,
-                        onClick = onMarkAllMissed
-                    )
-                    Text("Miss", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    QuickAttendanceRoundButton(
-                        symbol = "✓",
-                        isSelected = false,
-                        activeColor = colors.success,
-                        onClick = onMarkAllAttended
-                    )
-                    Text("Att", style = MaterialTheme.typography.labelSmall, color = colors.textSecondary, fontSize = 9.sp)
+                    // Left Section: Status indicator dot + Status label, Title, and Date
+                    Row(
+                        modifier = Modifier.weight(1f, fill = false),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(effectiveDotColor, CircleShape)
+                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text(
+                                text = "Today's status",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                                fontSize = 11.5.sp,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = statusTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                fontSize = if (isNarrow) 16.sp else 18.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (!selectedDateText.isNullOrBlank()) {
+                                Text(
+                                    text = selectedDateText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = colors.textMuted,
+                                    fontSize = 10.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+
+                    // Vertical Divider
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(modifier = Modifier.width(if (isNarrow) 6.dp else 10.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(38.dp)
+                                .background(colors.border.copy(alpha = 0.7f))
+                        )
+                        Spacer(modifier = Modifier.width(if (isNarrow) 6.dp else 10.dp))
+                    }
+
+                    // Right Section: 4 Action Buttons (Clear, Off, Miss, Att)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        DayStatusActionItem(
+                            label = "Clear",
+                            isSelected = false,
+                            activeColor = colors.accent,
+                            buttonSize = buttonSize,
+                            onClick = onClearAll,
+                            iconContent = { color ->
+                                Canvas(modifier = Modifier.size(if (isNarrow) 15.dp else 17.dp)) {
+                                    val strokeW = 1.8.dp.toPx()
+                                    val r = size.minDimension / 2 - strokeW / 2
+                                    drawCircle(color = color, radius = r, style = Stroke(width = strokeW))
+                                    val offset = r * 0.7071f
+                                    drawLine(
+                                        color = color,
+                                        start = Offset(center.x - offset, center.y - offset),
+                                        end = Offset(center.x + offset, center.y + offset),
+                                        strokeWidth = strokeW,
+                                        cap = StrokeCap.Round
+                                    )
+                                }
+                            }
+                        )
+
+                        DayStatusActionItem(
+                            label = "Off",
+                            isSelected = (effectiveState == DayAttendanceState.OFF),
+                            activeColor = colors.warning,
+                            buttonSize = buttonSize,
+                            onClick = onMarkAllOff,
+                            iconContent = { color ->
+                                Canvas(modifier = Modifier.size(if (isNarrow) 15.dp else 17.dp)) {
+                                    val strokeW = 2.dp.toPx()
+                                    val halfLen = size.width * 0.34f
+                                    drawLine(
+                                        color = color,
+                                        start = Offset(center.x - halfLen, center.y),
+                                        end = Offset(center.x + halfLen, center.y),
+                                        strokeWidth = strokeW,
+                                        cap = StrokeCap.Round
+                                    )
+                                }
+                            }
+                        )
+
+                        DayStatusActionItem(
+                            label = "Miss",
+                            isSelected = (effectiveState == DayAttendanceState.MISSED),
+                            activeColor = colors.danger,
+                            buttonSize = buttonSize,
+                            onClick = onMarkAllMissed,
+                            iconContent = { color ->
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Miss",
+                                    tint = color,
+                                    modifier = Modifier.size(if (isNarrow) 16.dp else 18.dp)
+                                )
+                            }
+                        )
+
+                        DayStatusActionItem(
+                            label = "Att",
+                            isSelected = (effectiveState == DayAttendanceState.ATTENDED),
+                            activeColor = colors.success,
+                            buttonSize = buttonSize,
+                            onClick = onMarkAllAttended,
+                            iconContent = { color ->
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Att",
+                                    tint = color,
+                                    modifier = Modifier.size(if (isNarrow) 16.dp else 18.dp)
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }

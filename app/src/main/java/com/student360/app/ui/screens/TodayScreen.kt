@@ -139,6 +139,8 @@ fun TodayScreen(
                 DayStatusBanner(
                     statusTitle = dayStatusInfo.first,
                     statusDotColor = dayStatusInfo.second,
+                    currentState = dayStatusInfo.third,
+                    selectedDateText = formattedDate,
                     onClearAll = {
                         viewModel.clearAllForDate(selectedDate)
                         Toast.makeText(context, "Attendance marks cleared", Toast.LENGTH_SHORT).show()
