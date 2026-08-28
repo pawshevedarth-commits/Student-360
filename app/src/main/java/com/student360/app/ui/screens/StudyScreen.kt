@@ -5,6 +5,7 @@ package com.student360.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.Goal
 import com.student360.app.data.local.entity.Subject
@@ -34,7 +36,8 @@ import java.util.*
 @Composable
 fun StudyScreen(
     repository: StudentRepository,
-    viewModel: StudyViewModel = viewModel()
+    viewModel: StudyViewModel = viewModel(),
+    onNavigateToProgress: (() -> Unit)? = null
 ) {
     val colors = LocalAppColors.current
     val subjects by viewModel.subjects.collectAsState()
@@ -45,16 +48,14 @@ fun StudyScreen(
     val timerSubjectId by viewModel.timerSubjectId.collectAsState()
     val timerTopic by viewModel.timerTopic.collectAsState()
 
-    var showTimerSetup by remember { mutableStateOf(false) }
     var selectedSubjectIndex by remember { mutableStateOf(0) }
-    var topicNameInput by remember { mutableStateOf("") }
+    var subjectDropdownExpanded by remember { mutableStateOf(false) }
 
     var showAddGoalDialog by remember { mutableStateOf(false) }
     var editGoalProgressTarget by remember { mutableStateOf<Goal?>(null) }
+    var sessionCompletionInfo by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     val stats = viewModel.getStudyStats()
-
-    var subjectDropdownExpanded by remember { mutableStateOf(false) }
 
     val formattedTime = remember(timerSeconds) {
         val h = timerSeconds / 3600
@@ -73,65 +74,119 @@ fun StudyScreen(
         // Study Timer Stopwatch Hero Widget
         item {
             StudentCard(
-                backgroundColor = CardDark,
-                borderColor = if (timerRunning) PrimaryPurple.copy(alpha = 0.6f) else BorderDark
+                backgroundColor = colors.card,
+                borderColor = if (timerRunning) colors.accent.copy(alpha = 0.7f) else colors.border,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Subject Selector Before Starting
+                    if (!timerRunning && timerSeconds == 0) {
+                        if (subjects.isNotEmpty()) {
+                            Box {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.elevatedCard,
+                                    border = BorderStroke(1.dp, colors.border),
+                                    modifier = Modifier.clickable { subjectDropdownExpanded = true }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        val selectedSubName = subjects[selectedSubjectIndex.coerceIn(0, subjects.lastIndex)].name
+                                        Text(
+                                            text = selectedSubName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.textPrimary,
+                                            fontSize = 14.sp
+                                        )
+                                        Icon(
+                                            Icons.Default.ArrowDropDown,
+                                            contentDescription = "Select Subject",
+                                            tint = colors.textSecondary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                DropdownMenu(
+                                    expanded = subjectDropdownExpanded,
+                                    onDismissRequest = { subjectDropdownExpanded = false },
+                                    modifier = Modifier.background(colors.card)
+                                ) {
+                                    subjects.forEachIndexed { index, sub ->
+                                        DropdownMenuItem(
+                                            text = { Text(sub.name, color = colors.textPrimary) },
+                                            onClick = {
+                                                selectedSubjectIndex = index
+                                                subjectDropdownExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    } else if (timerSubjectId != null) {
+                        val subName = subjects.find { it.id == timerSubjectId }?.name ?: "Subject"
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.accent.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.3f))
+                        ) {
+                            Text(
+                                "📚 $subName",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.accent,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     Text(
                         "STUDY TIMER",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = LightPurple
+                        color = colors.accent,
+                        letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = formattedTime,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (timerRunning) LightPurple else PrimaryText
+                        fontSize = 38.sp,
+                        color = if (timerRunning) colors.accent else colors.textPrimary
                     )
 
-                    // Active subject badge
-                    if (timerSubjectId != null) {
-                        val subName = subjects.find { it.id == timerSubjectId }?.name ?: "Subject"
-                        val topicText = if (!timerTopic.isNullOrBlank()) " • $timerTopic" else ""
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = ElevatedCardDark,
-                            border = BorderStroke(1.dp, BorderDark)
-                        ) {
-                            Text(
-                                "📚 $subName$topicText",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = LightPurple,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     if (!timerRunning && timerSeconds == 0) {
                         if (subjects.isNotEmpty()) {
                             Button(
-                                onClick = { showTimerSetup = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                                onClick = {
+                                    val sub = subjects[selectedSubjectIndex.coerceIn(0, subjects.lastIndex)]
+                                    viewModel.startTimer(sub.id, "")
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                                 shape = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                             ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color.White)
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Start Session", fontWeight = FontWeight.Bold)
+                                Text("Start Session", fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         } else {
                             Text(
                                 "Add subjects first in Attendance to track study sessions.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = SecondaryText
+                                color = colors.textSecondary
                             )
                         }
                     } else {
@@ -147,48 +202,42 @@ fun StudyScreen(
                                 if (timerRunning) {
                                     Button(
                                         onClick = { viewModel.pauseTimer() },
-                                        colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
-                                        border = BorderStroke(1.dp, WarningOrange.copy(alpha = 0.6f)),
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.elevatedCard),
+                                        border = BorderStroke(1.dp, colors.warning.copy(alpha = 0.6f)),
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.weight(1f),
                                         contentPadding = PaddingValues(vertical = 12.dp)
                                     ) {
-                                        Text("Pause", color = WarningOrange, fontWeight = FontWeight.Bold)
+                                        Text("⏸ Pause", color = colors.warning, fontWeight = FontWeight.Bold)
                                     }
                                 } else {
                                     Button(
                                         onClick = { viewModel.resumeTimer() },
-                                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.weight(1f),
                                         contentPadding = PaddingValues(vertical = 12.dp)
                                     ) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Resume", color = Color.White, fontWeight = FontWeight.Bold)
+                                        Text("▶ Resume", color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                 }
 
                                 Button(
-                                    onClick = { viewModel.stopAndSaveTimer() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                                    onClick = {
+                                        val lastSecs = timerSeconds
+                                        val lastSubId = timerSubjectId
+                                        val subName = subjects.find { it.id == lastSubId }?.name ?: "Subject"
+                                        val mins = (lastSecs / 60).coerceAtLeast(1)
+                                        viewModel.stopAndSaveTimer()
+                                        sessionCompletionInfo = subName to mins
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = colors.danger),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.weight(1f),
                                     contentPadding = PaddingValues(vertical = 12.dp)
                                 ) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Save Session", color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text("■ End Session", color = Color.White, fontWeight = FontWeight.Bold)
                                 }
-                            }
-
-                            TextButton(
-                                onClick = { viewModel.discardTimer() },
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
-                            ) {
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = DangerRed, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Discard Session", color = DangerRed, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
@@ -198,12 +247,34 @@ fun StudyScreen(
 
         // Live stats aggregates (Today, Week, Month)
         item {
-            SectionHeader(title = "Study Statistics")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Study Statistics",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = colors.textPrimary
+                )
+                if (onNavigateToProgress != null) {
+                    Text(
+                        "View Analytics →",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.accent,
+                        fontSize = 12.sp,
+                        modifier = Modifier.clickable { onNavigateToProgress() }
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StudyStatCard("Today", "${stats.todayMins} min", modifier = Modifier.weight(1f))
-                StudyStatCard("This Week", "${String.format("%.1f", stats.weekHours)} hrs", modifier = Modifier.weight(1f))
-                StudyStatCard("This Month", "${String.format("%.1f", stats.monthHours)} hrs", modifier = Modifier.weight(1f))
+                StudyStatCard("This Week", "${String.format(Locale.US, "%.1f", stats.weekHours)} hrs", modifier = Modifier.weight(1f))
+                StudyStatCard("This Month", "${String.format(Locale.US, "%.1f", stats.monthHours)} hrs", modifier = Modifier.weight(1f))
             }
         }
 
@@ -218,13 +289,45 @@ fun StudyScreen(
 
         if (goals.isEmpty()) {
             item {
-                EmptyStateView(
-                    icon = Icons.Default.Star,
-                    title = "No Academic Goals",
-                    subtitle = "Set study goals like 'Complete DBMS Unit 2' to stay focused and track progress.",
-                    actionText = "+ Add Goal",
-                    onActionClick = { showAddGoalDialog = true }
-                )
+                StudentCard(
+                    backgroundColor = colors.elevatedCard,
+                    borderColor = colors.border,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("🎯", fontSize = 28.sp)
+                        Text(
+                            "Set your first academic goal",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            "Complete DBMS Unit 2",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Button(
+                            onClick = { showAddGoalDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Create Goal", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                        }
+                    }
+                }
             }
         } else {
             items(goals) { goal ->
@@ -237,89 +340,46 @@ fun StudyScreen(
         }
     }
 
-    // Start Timer Setup Dialog
-    if (showTimerSetup && subjects.isNotEmpty()) {
+    // Session Completion Dialog
+    if (sessionCompletionInfo != null) {
+        val (subName, mins) = sessionCompletionInfo!!
         AlertDialog(
-            onDismissRequest = { showTimerSetup = false },
-            containerColor = SurfaceDark,
-            titleContentColor = PrimaryText,
-            textContentColor = PrimaryText,
+            onDismissRequest = { sessionCompletionInfo = null },
+            containerColor = colors.card,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textSecondary,
             title = {
                 Text(
-                    "Configure Study Session",
+                    "Session Complete",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ExposedDropdownMenuBox(
-                        expanded = subjectDropdownExpanded,
-                        onExpandedChange = { subjectDropdownExpanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = subjects[selectedSubjectIndex].name,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Subject") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subjectDropdownExpanded) },
-                            shape = RoundedCornerShape(10.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = PrimaryPurple,
-                                unfocusedBorderColor = BorderDark,
-                                focusedTextColor = PrimaryText,
-                                unfocusedTextColor = PrimaryText
-                            ),
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = subjectDropdownExpanded,
-                            onDismissRequest = { subjectDropdownExpanded = false },
-                            modifier = Modifier.background(SurfaceDark)
-                        ) {
-                            subjects.forEachIndexed { index, sub ->
-                                DropdownMenuItem(
-                                    text = { Text(sub.name, color = PrimaryText) },
-                                    onClick = {
-                                        selectedSubjectIndex = index
-                                        subjectDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    OutlinedTextField(
-                        value = topicNameInput,
-                        onValueChange = { topicNameInput = it },
-                        label = { Text("Topic Name (e.g. Unit 2 - SQL Queries)") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "$subName · $mins min",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.accent,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        "Your study statistics have been updated.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                        fontSize = 13.sp
                     )
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        viewModel.startTimer(subjects[selectedSubjectIndex].id, topicNameInput)
-                        showTimerSetup = false
-                        topicNameInput = ""
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                    onClick = { sessionCompletionInfo = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Start", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimerSetup = false }) {
-                    Text("Cancel", color = SecondaryText)
+                    Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -328,14 +388,14 @@ fun StudyScreen(
     // Add Goal Dialog
     if (showAddGoalDialog) {
         var goalTitle by remember { mutableStateOf("") }
-        var goalTarget by remember { mutableStateOf("") }
+        var goalTarget by remember { mutableStateOf("10") }
         var goalDueDays by remember { mutableStateOf("14") }
 
         AlertDialog(
             onDismissRequest = { showAddGoalDialog = false },
-            containerColor = SurfaceDark,
-            titleContentColor = PrimaryText,
-            textContentColor = PrimaryText,
+            containerColor = colors.card,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textPrimary,
             title = {
                 Text(
                     "Add Academic Goal",
@@ -351,24 +411,24 @@ fun StudyScreen(
                         label = { Text("Goal Title (e.g. Complete DBMS Unit 2)") },
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = goalTarget,
                         onValueChange = { goalTarget = it },
-                        label = { Text("Target count (e.g. 100)") },
+                        label = { Text("Target count (e.g. 10)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -379,10 +439,10 @@ fun StudyScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -394,14 +454,14 @@ fun StudyScreen(
                         if (goalTitle.isNotBlank()) {
                             viewModel.addGoal(
                                 goalTitle,
-                                goalTarget.toDoubleOrNull() ?: 1.0,
+                                goalTarget.toDoubleOrNull() ?: 10.0,
                                 0.0,
                                 goalDueDays.toIntOrNull() ?: 14
                             )
                             showAddGoalDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                     shape = RoundedCornerShape(10.dp),
                     enabled = goalTitle.isNotBlank()
                 ) {
@@ -410,42 +470,39 @@ fun StudyScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showAddGoalDialog = false }) {
-                    Text("Cancel", color = SecondaryText)
+                    Text("Cancel", color = colors.textSecondary)
                 }
             }
         )
     }
 
-    // Edit Goal Progress Dialog
-    editGoalProgressTarget?.let { goal ->
-        var progressInput by remember { mutableStateOf(goal.currentProgress.toInt().toString()) }
+    // Edit Goal Progress Target Dialog
+    if (editGoalProgressTarget != null) {
+        val g = editGoalProgressTarget!!
+        var progressInput by remember { mutableStateOf(g.currentProgress.toInt().toString()) }
 
         AlertDialog(
             onDismissRequest = { editGoalProgressTarget = null },
-            containerColor = SurfaceDark,
-            titleContentColor = PrimaryText,
-            textContentColor = PrimaryText,
+            containerColor = colors.card,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textPrimary,
             title = {
-                Text(
-                    "Update Progress",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Update Progress", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Goal: ${goal.title}", style = MaterialTheme.typography.bodyMedium, color = SecondaryText)
+                    Text(g.title, fontWeight = FontWeight.SemiBold, color = colors.accent, fontSize = 14.sp)
                     OutlinedTextField(
                         value = progressInput,
                         onValueChange = { progressInput = it },
-                        label = { Text("Current count") },
+                        label = { Text("Completed (out of ${g.target.toInt()})") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -454,11 +511,11 @@ fun StudyScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        val prog = progressInput.toDoubleOrNull() ?: goal.currentProgress
-                        viewModel.updateGoalProgress(goal, prog)
+                        val newProgress = progressInput.toDoubleOrNull() ?: g.currentProgress
+                        viewModel.updateGoalProgress(g, newProgress)
                         editGoalProgressTarget = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Update", color = Color.White, fontWeight = FontWeight.Bold)
@@ -466,7 +523,7 @@ fun StudyScreen(
             },
             dismissButton = {
                 TextButton(onClick = { editGoalProgressTarget = null }) {
-                    Text("Cancel", color = SecondaryText)
+                    Text("Cancel", color = colors.textSecondary)
                 }
             }
         )
@@ -479,20 +536,22 @@ fun StudyStatCard(
     value: String,
     modifier: Modifier = Modifier
 ) {
+    val colors = LocalAppColors.current
     StudentCard(
         modifier = modifier,
-        backgroundColor = CardDark,
-        borderColor = BorderDark
+        backgroundColor = colors.card,
+        borderColor = colors.border
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 label,
                 style = MaterialTheme.typography.labelSmall,
-                color = SecondaryText,
+                color = colors.textSecondary,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -500,7 +559,8 @@ fun StudyStatCard(
                 value,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = PrimaryText,
+                color = colors.textPrimary,
+                fontSize = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -514,6 +574,7 @@ fun GoalCard(
     onUpdateProgress: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val colors = LocalAppColors.current
     val progressFraction = (goal.currentProgress / goal.target).toFloat().coerceIn(0f, 1f)
     val pct = (progressFraction * 100).toInt()
     val formattedDeadline = remember(goal.deadline) {
@@ -521,8 +582,9 @@ fun GoalCard(
     }
 
     StudentCard(
-        backgroundColor = CardDark,
-        borderColor = BorderDark
+        backgroundColor = colors.card,
+        borderColor = colors.border,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -537,13 +599,14 @@ fun GoalCard(
                     goal.title,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleSmall,
-                    color = PrimaryText,
+                    fontSize = 16.sp,
+                    color = colors.textPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(
                     text = "$pct%",
-                    color = if (pct >= 100) SuccessGreen else PrimaryPurple
+                    color = if (pct >= 100) colors.success else colors.accent
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 IconButton(
@@ -553,7 +616,7 @@ fun GoalCard(
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete Goal",
-                        tint = SecondaryText.copy(alpha = 0.7f),
+                        tint = colors.textSecondary.copy(alpha = 0.7f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -561,8 +624,8 @@ fun GoalCard(
 
             StudentProgressBar(
                 progress = progressFraction,
-                color = if (pct >= 100) SuccessGreen else PrimaryPurple,
-                trackColor = SurfaceDark,
+                color = if (pct >= 100) colors.success else colors.accent,
+                trackColor = colors.border.copy(alpha = 0.4f),
                 height = 8.dp
             )
 
@@ -571,22 +634,31 @@ fun GoalCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "${goal.currentProgress.toInt()} / ${goal.target.toInt()} completed • Due $formattedDeadline",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
-                )
+                Column {
+                    Text(
+                        "${goal.currentProgress.toInt()} / ${goal.target.toInt()} tasks completed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        "Due $formattedDeadline",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textMuted,
+                        fontSize = 11.sp
+                    )
+                }
                 Button(
                     onClick = onUpdateProgress,
-                    colors = ButtonDefaults.buttonColors(containerColor = ElevatedCardDark),
-                    border = BorderStroke(1.dp, BorderDark),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.elevatedCard),
+                    border = BorderStroke(1.dp, colors.border),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         "Update",
                         style = MaterialTheme.typography.labelSmall,
-                        color = LightPurple,
+                        color = colors.accent,
                         fontWeight = FontWeight.Bold
                     )
                 }

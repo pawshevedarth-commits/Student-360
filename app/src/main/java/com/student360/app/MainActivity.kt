@@ -232,7 +232,10 @@ fun MainShell(repository: StudentRepository) {
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        IconButton(
+                            onClick = { scope.launch { drawerState.open() } },
+                            modifier = Modifier.size(44.dp)
+                        ) {
                             Icon(
                                 Icons.Default.Menu,
                                 contentDescription = "Menu",
@@ -242,10 +245,13 @@ fun MainShell(repository: StudentRepository) {
                     },
                     actions = {
                         Box(contentAlignment = Alignment.TopEnd) {
-                            IconButton(onClick = {
-                                activeDetailSubject = null
-                                currentScreen = Screen.ALERTS
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    activeDetailSubject = null
+                                    currentScreen = Screen.ALERTS
+                                },
+                                modifier = Modifier.size(44.dp)
+                            ) {
                                 Icon(
                                     Icons.Default.Notifications,
                                     contentDescription = "Alerts",
@@ -255,7 +261,7 @@ fun MainShell(repository: StudentRepository) {
                             if (unreadAlertsCount > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .padding(top = 8.dp, end = 8.dp)
+                                        .padding(top = 10.dp, end = 10.dp)
                                         .size(8.dp)
                                         .background(colors.accent, CircleShape)
                                 )
@@ -383,7 +389,10 @@ fun MainShell(repository: StudentRepository) {
                             )
                             Screen.HOME -> HomeScreen(repository, onNavigate = { s -> currentScreen = s })
                             Screen.MY_DAY -> MyDayScreen(repository)
-                            Screen.STUDY -> StudyScreen(repository)
+                            Screen.STUDY -> StudyScreen(
+                                repository = repository,
+                                onNavigateToProgress = { currentScreen = Screen.PROGRESS }
+                            )
                             Screen.ASSISTANT -> AssistantScreen(repository)
                             Screen.EXAMS -> ExamsScreen(repository)
                             Screen.PROGRESS -> ProgressScreen(repository)
@@ -415,13 +424,13 @@ fun ReferenceBottomNavItem(
     ) {
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = if (isSelected) colors.activePill else Color.Transparent,
+            color = if (isSelected) colors.accent.copy(alpha = 0.15f) else Color.Transparent,
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) (if (colors.isDark) Color.White else colors.accent) else colors.textSecondary,
+                tint = if (isSelected) colors.accent else colors.textSecondary.copy(alpha = 0.7f),
                 modifier = Modifier
                     .padding(horizontal = 14.dp, vertical = 4.dp)
                     .size(20.dp)
@@ -431,8 +440,8 @@ fun ReferenceBottomNavItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = if (isSelected) (if (colors.isDark) Color.White else colors.accent) else colors.textSecondary,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) colors.accent else colors.textSecondary.copy(alpha = 0.7f),
             fontSize = 11.sp,
             maxLines = 1,
             softWrap = false,

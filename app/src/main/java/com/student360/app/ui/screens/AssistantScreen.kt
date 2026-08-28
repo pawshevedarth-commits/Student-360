@@ -15,11 +15,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.*
@@ -44,17 +46,19 @@ fun AssistantScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)) {
                 Text(
                     "Study Assistant",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryText
+                    fontSize = 28.sp,
+                    color = colors.textPrimary
                 )
                 Text(
                     "Your personalized academic planner & recommendation engine",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
+                    color = colors.textSecondary
                 )
             }
         }
@@ -64,8 +68,9 @@ fun AssistantScreen(
             val top = candidates.first()
             item {
                 StudentCard(
-                    backgroundColor = CardDark,
-                    borderColor = PrimaryPurple.copy(alpha = 0.5f)
+                    backgroundColor = colors.card,
+                    borderColor = colors.accent.copy(alpha = 0.6f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -74,29 +79,47 @@ fun AssistantScreen(
                     ) {
                         Text(
                             "Today's Priority",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = LightPurple,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.accent,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
                         )
-                        StatusBadge(
-                            text = "High Priority",
-                            color = if (top.priorityScore > 50) DangerRed else WarningOrange
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = colors.danger.copy(alpha = 0.15f),
+                            border = BorderStroke(1.dp, colors.danger.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Box(modifier = Modifier.size(6.dp).background(colors.danger, CircleShape))
+                                Text(
+                                    "High Priority",
+                                    color = colors.danger,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         top.subject.name,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryText
+                        fontSize = 22.sp,
+                        color = colors.textPrimary
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Reason: ${top.reason}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = SecondaryText
+                        top.reason,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                        fontSize = 13.sp
                     )
                 }
             }
@@ -105,19 +128,22 @@ fun AssistantScreen(
         // Plan My Day Inputs Card
         item {
             StudentCard(
-                backgroundColor = CardDark,
-                borderColor = BorderDark
+                backgroundColor = colors.elevatedCard,
+                borderColor = colors.border,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    "Plan My Day Scheduler",
+                    "Plan My Day",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = PrimaryText
+                    fontSize = 17.sp,
+                    color = colors.textPrimary
                 )
                 Text(
                     "How many study hours do you have available today?",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    fontSize = 13.sp,
+                    color = colors.textSecondary
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -130,27 +156,29 @@ fun AssistantScreen(
                     OutlinedTextField(
                         value = availableHours,
                         onValueChange = { availableHours = it },
-                        label = { Text("Available Hours") },
+                        label = { Text("Hours") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryPurple,
-                            unfocusedBorderColor = BorderDark,
-                            focusedTextColor = PrimaryText,
-                            unfocusedTextColor = PrimaryText
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
                         ),
-                        modifier = Modifier.weight(1f)
+                        singleLine = true,
+                        modifier = Modifier.width(100.dp)
                     )
                     Button(
                         onClick = {
                             val hrs = availableHours.toDoubleOrNull() ?: 3.0
                             viewModel.generateDaySchedule(hrs)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text("⚡ Generate", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("⚡ Generate My Study Plan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -164,8 +192,9 @@ fun AssistantScreen(
 
             items(schedule) { block ->
                 StudentCard(
-                    backgroundColor = if (block.isBreak) SurfaceDark else CardDark,
-                    borderColor = if (block.isBreak) BorderDark.copy(alpha = 0.5f) else SuccessGreen.copy(alpha = 0.35f)
+                    backgroundColor = if (block.isBreak) colors.elevatedCard else colors.card,
+                    borderColor = if (block.isBreak) colors.border.copy(alpha = 0.5f) else colors.success.copy(alpha = 0.35f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -181,7 +210,7 @@ fun AssistantScreen(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .background(
-                                        if (block.isBreak) ElevatedCardDark else SuccessGreen.copy(alpha = 0.15f),
+                                        if (block.isBreak) colors.border.copy(alpha = 0.2f) else colors.success.copy(alpha = 0.15f),
                                         CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
@@ -196,14 +225,14 @@ fun AssistantScreen(
                                     block.label,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (block.isBreak) SecondaryText else PrimaryText,
+                                    color = if (block.isBreak) colors.textSecondary else colors.textPrimary,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     "${block.startTime} - ${block.endTime}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = SecondaryText
+                                    color = colors.textSecondary
                                 )
                             }
                         }
@@ -219,8 +248,9 @@ fun AssistantScreen(
             }
             items(candidates.drop(1)) { candidate ->
                 StudentCard(
-                    backgroundColor = CardDark,
-                    borderColor = BorderDark
+                    backgroundColor = colors.card,
+                    borderColor = colors.border,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -229,29 +259,50 @@ fun AssistantScreen(
                     ) {
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
                                 candidate.subject.name,
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = PrimaryText,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontSize = 16.sp,
+                                color = colors.textPrimary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 candidate.reason,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = SecondaryText,
+                                fontSize = 12.sp,
+                                color = colors.textSecondary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            val scorePct = (candidate.priorityScore / 100.0).toFloat().coerceIn(0f, 1f)
+                            LinearProgressIndicator(
+                                progress = scorePct,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.7f)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = if (candidate.priorityScore > 40) colors.warning else colors.accent,
+                                trackColor = colors.border.copy(alpha = 0.4f)
+                            )
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        StatusBadge(
-                            text = "Score ${candidate.priorityScore.toInt()}",
-                            color = if (candidate.priorityScore > 40) WarningOrange else LightPurple
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border)
+                        ) {
+                            Text(
+                                text = "Score ${candidate.priorityScore.toInt()}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (candidate.priorityScore > 40) colors.warning else colors.accent,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
             }

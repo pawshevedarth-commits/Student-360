@@ -5,25 +5,30 @@ package com.student360.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.student360.app.data.local.entity.AssignmentPriority
 import com.student360.app.data.local.entity.TaskCategory
@@ -44,46 +49,105 @@ fun MyDayScreen(
     val progress by viewModel.completionPercentage.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
 
+    var showAddMenu by remember { mutableStateOf(false) }
     var showAddTaskDialog by remember { mutableStateOf(false) }
     var showAddAssignDialog by remember { mutableStateOf(false) }
+    var showAddGoalDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = colors.bg,
         floatingActionButton = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 8.dp, end = 4.dp)
             ) {
-                FloatingActionButton(
-                    onClick = { showAddTaskDialog = true },
-                    containerColor = colors.elevatedCard,
-                    contentColor = colors.accent,
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Task", modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Task", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    }
-                }
-                if (subjects.isNotEmpty()) {
-                    FloatingActionButton(
-                        onClick = { showAddAssignDialog = true },
-                        containerColor = colors.accent,
-                        contentColor = Color.White,
-                        shape = RoundedCornerShape(14.dp)
+                if (showAddMenu) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.card,
+                        border = BorderStroke(1.dp, colors.border),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.clickable {
+                            showAddMenu = false
+                            showAddAssignDialog = true
+                        }
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Assignment", modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Assignment", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.Add, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
+                            Text("Assignment", fontWeight = FontWeight.SemiBold, color = colors.textPrimary, fontSize = 13.sp)
                         }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.card,
+                        border = BorderStroke(1.dp, colors.border),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.clickable {
+                            showAddMenu = false
+                            showAddTaskDialog = true
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
+                            Text("Task", fontWeight = FontWeight.SemiBold, color = colors.textPrimary, fontSize = 13.sp)
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = colors.card,
+                        border = BorderStroke(1.dp, colors.border),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier.clickable {
+                            showAddMenu = false
+                            showAddGoalDialog = true
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp))
+                            Text("Goal", fontWeight = FontWeight.SemiBold, color = colors.textPrimary, fontSize = 13.sp)
+                        }
+                    }
+                }
+
+                FloatingActionButton(
+                    onClick = { showAddMenu = !showAddMenu },
+                    containerColor = colors.accent,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.height(46.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            if (showAddMenu) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription = "Add",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White
+                        )
+                        Text(
+                            "Add",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     }
                 }
             }
@@ -200,6 +264,74 @@ fun MyDayScreen(
                 }
             )
         }
+
+        if (showAddGoalDialog) {
+            var goalTitle by remember { mutableStateOf("") }
+            var goalTarget by remember { mutableStateOf("10") }
+            var goalDueDays by remember { mutableStateOf("14") }
+
+            AlertDialog(
+                onDismissRequest = { showAddGoalDialog = false },
+                containerColor = colors.card,
+                titleContentColor = colors.textPrimary,
+                textContentColor = colors.textPrimary,
+                title = {
+                    Text("Add Academic Goal", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedTextField(
+                            value = goalTitle,
+                            onValueChange = { goalTitle = it },
+                            label = { Text("Goal Title (e.g. Complete DBMS Unit 2)") },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = colors.accent,
+                                unfocusedBorderColor = colors.border,
+                                focusedTextColor = colors.textPrimary,
+                                unfocusedTextColor = colors.textPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = goalTarget,
+                            onValueChange = { goalTarget = it },
+                            label = { Text("Target count (e.g. 10)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = colors.accent,
+                                unfocusedBorderColor = colors.border,
+                                focusedTextColor = colors.textPrimary,
+                                unfocusedTextColor = colors.textPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (goalTitle.isNotBlank()) {
+                                val dueMillis = System.currentTimeMillis() + ((goalDueDays.toLongOrNull() ?: 14L) * 24 * 60 * 60 * 1000L)
+                                viewModel.addGoal(goalTitle, dueMillis, goalTarget.toDoubleOrNull() ?: 10.0)
+                                showAddGoalDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = goalTitle.isNotBlank()
+                    ) {
+                        Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddGoalDialog = false }) {
+                        Text("Cancel", color = colors.textSecondary)
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -208,16 +340,17 @@ fun MyDayChecklistItem(
     item: MyDayItem,
     onToggle: (Boolean) -> Unit
 ) {
+    val colors = LocalAppColors.current
     val prioColor = when (item.priority) {
-        TaskPriority.URGENT -> DangerRed
-        TaskPriority.HIGH -> WarningOrange
-        TaskPriority.MEDIUM -> LightPurple
-        TaskPriority.LOW -> SecondaryText
+        TaskPriority.URGENT -> colors.danger
+        TaskPriority.HIGH -> colors.warning
+        TaskPriority.MEDIUM -> colors.accent
+        TaskPriority.LOW -> colors.textSecondary
     }
 
     StudentCard(
-        backgroundColor = if (item.completed) SurfaceDark else CardDark,
-        borderColor = if (item.completed) BorderDark.copy(alpha = 0.4f) else BorderDark
+        backgroundColor = if (item.completed) colors.card.copy(alpha = 0.5f) else colors.card,
+        borderColor = if (item.completed) colors.border.copy(alpha = 0.4f) else colors.border
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -232,7 +365,7 @@ fun MyDayChecklistItem(
                     Box(
                         modifier = Modifier
                             .size(24.dp)
-                            .background(LightPurple.copy(alpha = 0.15f), CircleShape),
+                            .background(colors.accent.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("🏛", style = MaterialTheme.typography.labelSmall)
@@ -242,8 +375,8 @@ fun MyDayChecklistItem(
                         checked = item.completed,
                         onCheckedChange = onToggle,
                         colors = CheckboxDefaults.colors(
-                            checkedColor = SuccessGreen,
-                            uncheckedColor = SecondaryText,
+                            checkedColor = colors.success,
+                            uncheckedColor = colors.textSecondary,
                             checkmarkColor = Color.White
                         )
                     )
@@ -257,7 +390,7 @@ fun MyDayChecklistItem(
                         item.title,
                         fontWeight = if (item.completed) FontWeight.Normal else FontWeight.Bold,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (item.completed) SecondaryText else PrimaryText,
+                        color = if (item.completed) colors.textSecondary else colors.textPrimary,
                         textDecoration = if (item.completed) TextDecoration.LineThrough else TextDecoration.None,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -265,7 +398,7 @@ fun MyDayChecklistItem(
                     Text(
                         item.subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = SecondaryText.copy(alpha = 0.8f),
+                        color = colors.textSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

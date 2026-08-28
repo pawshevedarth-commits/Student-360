@@ -95,11 +95,19 @@ class MyDayViewModel(application: Application) : AndroidViewModel(application) {
         tasks.forEach { task ->
             val taskMidnight = getMidnightTime(task.dueDate)
             if (taskMidnight == todayTime || (!task.completed && task.dueDate < System.currentTimeMillis())) {
+                val catName = when (task.category) {
+                    TaskCategory.COLLEGE -> "College"
+                    TaskCategory.STUDY -> "Study"
+                    TaskCategory.PERSONAL -> "Personal"
+                    TaskCategory.ASSIGNMENT -> "Assignment"
+                    TaskCategory.CODING -> "Coding"
+                    TaskCategory.OTHER -> "Other"
+                }
                 items.add(
                     MyDayItem(
                         id = "task_${task.id}",
                         title = task.title,
-                        subtitle = "${task.category.name} • ${task.estimatedDuration}m estimated",
+                        subtitle = "$catName · ${task.estimatedDuration} min",
                         category = if (task.category == TaskCategory.STUDY) "STUDY" else "PERSONAL",
                         priority = task.priority,
                         completed = task.completed,
@@ -114,12 +122,12 @@ class MyDayViewModel(application: Application) : AndroidViewModel(application) {
             val assignMidnight = getMidnightTime(assign.dueDate)
             val isOverdue = !assign.status.name.equals("COMPLETED") && assign.dueDate < System.currentTimeMillis()
             if (assignMidnight == todayTime || assign.status != AssignmentStatus.COMPLETED) {
+                val dueFormatted = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(assign.dueDate))
                 items.add(
                     MyDayItem(
                         id = "assign_${assign.id}",
                         title = assign.name,
-                        subtitle = "Due: " + SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(assign.dueDate)) +
-                                if (isOverdue) " (OVERDUE)" else "",
+                        subtitle = "Due $dueFormatted" + if (isOverdue) " · OVERDUE" else "",
                         category = "ASSIGNMENTS",
                         priority = when (assign.priority) {
                             AssignmentPriority.LOW -> TaskPriority.LOW
@@ -193,6 +201,19 @@ class MyDayViewModel(application: Application) : AndroidViewModel(application) {
                     status = AssignmentStatus.NOT_STARTED
                 )
             )
+            refreshMyDay()
+        }
+    }
+
+    fun addGoal(title: String, deadline: Long, target: Double) {
+        viewModelScope.launch {
+            val goal = com.student360.app.data.local.entity.Goal(
+                title = title,
+                target = target,
+                currentProgress = 0.0,
+                deadline = deadline
+            )
+            repository.insertGoal(goal)
             refreshMyDay()
         }
     }
