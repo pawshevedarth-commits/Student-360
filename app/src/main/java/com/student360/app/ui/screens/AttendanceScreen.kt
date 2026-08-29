@@ -62,8 +62,9 @@ fun AttendanceScreen(
     var selectedDayTab by remember { mutableStateOf(0) } // 0 = Mon .. 6 = Sun
 
     var showAddLectureDialog by remember { mutableStateOf(false) }
+    var showAddMultipleSubjectsSheet by remember { mutableStateOf(false) }
     var entryToDelete by remember { mutableStateOf<TimetableEntry?>(null) }
-    var selectedEntryForPicker by remember { mutableStateOf<TimetableEntry?>(null) }
+    var selectedEntryForEdit by remember { mutableStateOf<TimetableEntry?>(null) }
     var selectedEntryForDetail by remember { mutableStateOf<TimetableEntry?>(null) }
 
     val daysOfWeek = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -301,15 +302,26 @@ fun AttendanceScreen(
                             )
                         }
 
-                        Button(
-                            onClick = { showAddLectureDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("+ Add Lecture", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedButton(
+                                onClick = { showAddMultipleSubjectsSheet = true },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, colors.accent),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accent),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text("Select Multiple", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                            }
+                            Button(
+                                onClick = { showAddLectureDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("+ Add Lecture", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                            }
                         }
                     }
 
@@ -331,14 +343,24 @@ fun AttendanceScreen(
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colors.textSecondary
                                 )
-                                Button(
-                                    onClick = { showAddLectureDialog = true },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Add Lecture", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { showAddLectureDialog = true },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Add Lecture", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { showAddMultipleSubjectsSheet = true },
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, colors.accent),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.accent)
+                                    ) {
+                                        Text("Select Multiple", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    }
                                 }
                             }
                         }
@@ -369,7 +391,7 @@ fun AttendanceScreen(
                                         .shadow(if (isDragging) 8.dp else 0.dp, RoundedCornerShape(14.dp))
                                         .clip(RoundedCornerShape(14.dp))
                                         .combinedClickable(
-                                            onClick = { selectedEntryForPicker = entry },
+                                            onClick = { selectedEntryForEdit = entry },
                                             onLongClick = { entryToDelete = entry }
                                         )
                                 ) {
@@ -503,7 +525,7 @@ fun AttendanceScreen(
                                                     .clip(RoundedCornerShape(8.dp))
                                                     .background(Color(0xFFE8DEFF))
                                                     .border(BorderStroke(1.dp, Color(0xFFD4C4FA)), RoundedCornerShape(8.dp))
-                                                    .clickable { selectedEntryForDetail = entry }
+                                                    .clickable { if (isEditMode) selectedEntryForEdit = entry else selectedEntryForDetail = entry }
                                                     .padding(horizontal = 3.dp, vertical = 4.dp),
                                                 contentAlignment = Alignment.TopStart
                                             ) {
@@ -610,7 +632,7 @@ fun AttendanceScreen(
                         Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 },
-                dismissButton = {
+                                        dismissButton = {
                     TextButton(onClick = { entryToDelete = null }) {
                         Text("Cancel", color = colors.textSecondary)
                     }
@@ -618,78 +640,42 @@ fun AttendanceScreen(
             )
         }
 
-        // Change Subject / Cell Picker Dialog (Edit Mode Tap)
-        selectedEntryForPicker?.let { entry ->
+        // Edit Existing Timetable Lecture Dialog (In Edit Mode)
+        selectedEntryForEdit?.let { entry ->
             val subjects = subjectsWithStats.map { it.first }
-            AlertDialog(
-                onDismissRequest = { selectedEntryForPicker = null },
-                containerColor = colors.card,
-                titleContentColor = colors.textPrimary,
-                title = { Text("Select Subject for Cell", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text("Choose course to assign to this period:", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
-                        LazyColumn(
-                            modifier = Modifier.heightIn(max = 240.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(subjects.size) { idx ->
-                                val sub = subjects[idx]
-                                val isCurrent = sub.id == entry.subjectId
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isCurrent) colors.activePill else colors.elevatedCard,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            scheduleViewModel.updateEntrySubject(entry, sub.id)
-                                            selectedEntryForPicker = null
-                                            Toast.makeText(context, "Updated to ${sub.name}", Toast.LENGTH_SHORT).show()
-                                        }
-                                ) {
-                                    Text(
-                                        text = sub.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isCurrent) (if (colors.isDark) Color.White else colors.accent) else colors.textPrimary,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { selectedEntryForPicker = null }) {
-                        Text("Cancel", color = colors.textSecondary)
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = {
-                            val deletedEntry = entry
-                            scheduleViewModel.deleteTimetableEntry(deletedEntry)
-                            selectedEntryForPicker = null
-                            coroutineScope.launch {
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "Cleared cell",
-                                    actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    scheduleViewModel.restoreTimetableEntry(deletedEntry)
-                                }
-                            }
-                        }
-                    ) {
-                        Text("Clear Cell", color = colors.danger)
-                    }
+            EditLectureDialog(
+                entry = entry,
+                subjects = subjects,
+                onDismiss = { selectedEntryForEdit = null },
+                onSave = { updatedEntry ->
+                    scheduleViewModel.updateTimetableEntry(updatedEntry)
+                    selectedEntryForEdit = null
+                    Toast.makeText(context, "Class updated", Toast.LENGTH_SHORT).show()
                 }
             )
         }
+
+        // Add Multiple Subjects BottomSheet (Batch Subject Selection)
+        if (showAddMultipleSubjectsSheet) {
+            val subjects = subjectsWithStats.map { it.first }
+            val existingIds = selectedDayTimetable.map { it.subjectId }.toSet()
+            AddMultipleSubjectsBottomSheet(
+                subjects = subjects,
+                dayName = fullDaysOfWeek[selectedDayTab],
+                existingSubjectIdsInDay = existingIds,
+                onDismiss = { showAddMultipleSubjectsSheet = false },
+                onAddSubjects = { selectedIds ->
+                    scheduleViewModel.addMultipleTimetableEntries(selectedIds, selectedDayTab)
+                    showAddMultipleSubjectsSheet = false
+                    Toast.makeText(
+                        context,
+                        "Added ${selectedIds.size} classes to ${fullDaysOfWeek[selectedDayTab]}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            )
+        }
+
 
         // Lecture Detail Dialog (Normal Mode Tap)
         selectedEntryForDetail?.let { entry ->

@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.student360.app.data.local.entity.Subject
+import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.SubjectStats
 import com.student360.app.ui.components.ElevatedStudentCard
 import com.student360.app.ui.theme.*
@@ -358,6 +359,77 @@ fun AttendanceSimulatorDialog(
                     )
                 }
 
+                // Quick What-If Projections (e.g. +1, +3, -1)
+                val currentAttended = stats.attended
+                val currentConducted = stats.attended + stats.missed
+                val ifAttendNext1 = if (currentConducted + 1 > 0) ((currentAttended + 1.0) / (currentConducted + 1.0)) * 100.0 else 100.0
+                val ifAttendNext3 = if (currentConducted + 3 > 0) ((currentAttended + 3.0) / (currentConducted + 3.0)) * 100.0 else 100.0
+                val ifMissNext1 = if (currentConducted + 1 > 0) (currentAttended.toDouble() / (currentConducted + 1.0)) * 100.0 else 0.0
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Quick What-If Scenarios (tap to apply):",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.textSecondary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    futureAttendStr = "1"
+                                    futureMissStr = "0"
+                                }
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                                Text("Attend +1", style = MaterialTheme.typography.labelSmall, color = colors.success, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                                Text("${String.format(Locale.US, "%.1f", ifAttendNext1)}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    futureAttendStr = "3"
+                                    futureMissStr = "0"
+                                }
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                                Text("Attend +3", style = MaterialTheme.typography.labelSmall, color = colors.success, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                                Text("${String.format(Locale.US, "%.1f", ifAttendNext3)}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    futureAttendStr = "0"
+                                    futureMissStr = "1"
+                                }
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                                Text("Miss 1", style = MaterialTheme.typography.labelSmall, color = colors.danger, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                                Text("${String.format(Locale.US, "%.1f", ifMissNext1)}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                            }
+                        }
+                    }
+                }
+
                 // Projected Comparison Card
                 ElevatedStudentCard(
                     backgroundColor = colors.elevatedCard,
@@ -410,6 +482,23 @@ fun AttendanceSimulatorDialog(
                             fontWeight = FontWeight.Medium
                         )
                     }
+                }
+
+                // Explicit simulation guarantee label
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = colors.accent.copy(alpha = 0.10f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "SIMULATION ONLY • Does not modify your real attendance records.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.accent,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 4.dp, horizontal = 6.dp)
+                    )
                 }
             }
         },
@@ -614,6 +703,186 @@ fun AddLectureDialog(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Save Class", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = colors.textSecondary)
+            }
+        }
+    )
+}
+
+/**
+ * Edit Existing Timetable Class Dialog.
+ * Allows editing subject, day of week, start time, end time, room, and faculty in-place.
+ * Updates the existing record by ID without duplicating it.
+ */
+@Composable
+fun EditLectureDialog(
+    entry: TimetableEntry,
+    subjects: List<Subject>,
+    onDismiss: () -> Unit,
+    onSave: (TimetableEntry) -> Unit
+) {
+    val colors = LocalAppColors.current
+    var selectedSubjectId by remember { mutableStateOf(entry.subjectId) }
+    var selectedDay by remember { mutableStateOf(entry.dayOfWeek) }
+    var startTime by remember { mutableStateOf(entry.startTime) }
+    var endTime by remember { mutableStateOf(entry.endTime) }
+    var room by remember { mutableStateOf(entry.room) }
+    var faculty by remember { mutableStateOf(entry.facultyOverride ?: "") }
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    val selectedSubject = subjects.find { it.id == selectedSubjectId } ?: subjects.firstOrNull()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        titleContentColor = colors.textPrimary,
+        textContentColor = colors.textPrimary,
+        title = {
+            Text(
+                "Edit Class",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Subject Dropdown
+                Box {
+                    OutlinedButton(
+                        onClick = { dropdownExpanded = true },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                        border = BorderStroke(1.dp, colors.border),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(selectedSubject?.name ?: "Select Course", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    }
+                    DropdownMenu(
+                        expanded = dropdownExpanded,
+                        onDismissRequest = { dropdownExpanded = false },
+                        modifier = Modifier.background(colors.card)
+                    ) {
+                        subjects.forEach { sub ->
+                            DropdownMenuItem(
+                                text = { Text(sub.name, color = colors.textPrimary) },
+                                onClick = {
+                                    selectedSubjectId = sub.id
+                                    dropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Day of Week Selector
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    days.forEachIndexed { index, day ->
+                        val isSel = selectedDay == index
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isSel) colors.activePill else colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedDay = index }
+                        ) {
+                            Text(
+                                text = day,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSel) (if (colors.isDark) Color.White else colors.accent) else colors.textSecondary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Time Inputs
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = startTime,
+                        onValueChange = { startTime = it },
+                        label = { Text("Start Time") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = endTime,
+                        onValueChange = { endTime = it },
+                        label = { Text("End Time") },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                OutlinedTextField(
+                    value = room,
+                    onValueChange = { room = it },
+                    label = { Text("Room / Lab (optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = faculty,
+                    onValueChange = { faculty = it },
+                    label = { Text("Faculty (optional)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val updated = entry.copy(
+                        subjectId = selectedSubjectId,
+                        dayOfWeek = selectedDay,
+                        startTime = startTime,
+                        endTime = endTime,
+                        room = room,
+                        facultyOverride = faculty.ifBlank { null }
+                    )
+                    onSave(updated)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Save Changes", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

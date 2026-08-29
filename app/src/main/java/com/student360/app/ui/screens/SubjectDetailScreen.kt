@@ -33,6 +33,7 @@ import com.student360.app.data.local.entity.AttendanceRecord
 import com.student360.app.data.local.entity.AttendanceStatus
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.repository.StudentRepository
+import com.student360.app.data.repository.SubjectStats
 import com.student360.app.ui.components.StudentCard
 import com.student360.app.ui.theme.*
 import java.text.SimpleDateFormat
@@ -62,6 +63,7 @@ fun SubjectDetailScreen(
     var showBaselineDialog by remember { mutableStateOf(false) }
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSimulatorDialog by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()) }
 
@@ -274,6 +276,21 @@ fun SubjectDetailScreen(
 
                             // Quick action buttons
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                IconButton(
+                                    onClick = { showSimulatorDialog = true },
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.elevatedCard)
+                                        .border(BorderStroke(1.dp, colors.border), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Star,
+                                        contentDescription = "What-If Simulator",
+                                        tint = colors.accent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                                 IconButton(
                                     onClick = { showBaselineDialog = true },
                                     modifier = Modifier
@@ -607,6 +624,16 @@ fun SubjectDetailScreen(
                     showDeleteDialog = false
                     onBack()
                 }
+            )
+        }
+
+        // What-If Simulator Dialog for Current Subject
+        if (showSimulatorDialog) {
+            AttendanceSimulatorDialog(
+                subjects = listOf(currentSubject),
+                statsList = listOf(SubjectStats(stats?.attended ?: 0, stats?.missed ?: 0, totalConducted, percentage)),
+                initialSelectedIndex = 0,
+                onDismiss = { showSimulatorDialog = false }
             )
         }
     }
