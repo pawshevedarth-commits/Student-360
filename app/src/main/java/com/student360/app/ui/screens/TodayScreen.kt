@@ -26,11 +26,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.student360.app.data.local.entity.AttendanceStatus
-import com.student360.app.data.local.entity.Subject
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import com.student360.app.data.local.entity.*
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,10 +43,12 @@ import java.util.*
 fun TodayScreen(
     repository: StudentRepository,
     viewModel: AttendanceViewModel,
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onStartStudySession: ((subjectId: Int, topic: String, durationMins: Int) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val colors = LocalAppColors.current
+    val coroutineScope = rememberCoroutineScope()
 
     val selectedDate by viewModel.selectedDate.collectAsState()
     val todayLectures by viewModel.todayLectures.collectAsState()
@@ -49,13 +56,92 @@ fun TodayScreen(
     val overallStats by viewModel.overallStats.collectAsState()
     val targetPercentage by viewModel.targetPercentage.collectAsState()
 
+    val allAssignments by repository.assignmentsFlow.collectAsState(initial = emptyList())
+    val allGoals by repository.goalsFlow.collectAsState(initial = emptyList())
+    val allExams by repository.examsFlow.collectAsState(initial = emptyList())
+
     var showAddExtraDialog by remember { mutableStateOf(false) }
+    var showAddTaskDialog by remember { mutableStateOf(false) }
+    var showAddAssignDialog by remember { mutableStateOf(false) }
+    var showAddGoalDialog by remember { mutableStateOf(false) }
 
     val dateFormatter = remember { SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()) }
     val formattedDate = remember(selectedDate) { dateFormatter.format(Date(selectedDate)) }
 
     val overallPct = overallStats?.percentage ?: 100.0
     val targetPct = targetPercentage.toInt()
+
+    // Command Center Computations (Real Data)
+    val greeting = remember {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        when (hour) {
+            in 5..11 -> "GOOD MORNING 👋"
+            in 12..16 -> "GOOD AFTERNOON ☀️"
+            in 17..21 -> "GOOD EVENING 🌙"
+            else -> "GOOD NIGHT 🌌"
+        }
+    }
+
+    val pendingAssignments = remember(allAssignments) {
+        allAssignments.filter { it.status != AssignmentStatus.COMPLETED }
+    }
+    val activeGoals = remember(allGoals) {
+        allGoals.filter { it.status == GoalStatus.ACTIVE }
+    }
+
+    // Critical subject below target (Smart Attendance Priority)
+    val criticalSubjectPair = remember(subjectsWithStats) {
+        subjectsWithStats.filter { (sub, stats) ->
+            !sub.isArchived && stats.percentage < sub.targetPercentage
+        }.minByOrNull { it.second.percentage }
+    }
+
+    // Study Recommendation (Priority Subject or Nearest Assignment)
+    val studyRecommendation = remember(criticalSubjectPair, pendingAssignments, todayLectures) {
+        if (criticalSubjectPair != null) {
+            val (sub, _) = criticalSubjectPair
+            Triple(sub.id, sub.name, "45 min study · Attendance Target ${sub.targetPercentage.toInt()}%")
+        } else if (pendingAssignments.isNotEmpty()) {
+            val nextAssign = pendingAssignments.minByOrNull { it.dueDate }!!
+            val sub = subjectsWithStats.find { it.first.id == nextAssign.subjectId }?.first
+            Triple(nextAssign.subjectId, sub?.name ?: nextAssign.name, "45 min study · ${nextAssign.name}")
+        } else if (todayLectures.isNotEmpty()) {
+            val firstSub = todayLectures.first().subject
+            Triple(firstSub.id, firstSub.name, "45 min revision")
+        } else {
+            null
+        }
+    }
+
+    // Coming Up (Nearest Assignment or Exam)
+    val comingUpItem = remember(pendingAssignments, allExams, subjectsWithStats) {
+        val now = System.currentTimeMillis()
+        val nextAssign = pendingAssignments.minByOrNull { it.dueDate }
+        val nextExam = allExams.filter { it.date >= now - 24 * 3600 * 1000L }.minByOrNull { it.date }
+
+        if (nextAssign != null && (nextExam == null || nextAssign.dueDate <= nextExam.date)) {
+            val days = ((nextAssign.dueDate - now) / (24 * 3600 * 1000L)).toInt()
+            val dueStr = when {
+                days < 0 -> "Overdue"
+                days == 0 -> "Due today"
+                days == 1 -> "Due tomorrow"
+                else -> "Due in $days days"
+            }
+            val subName = subjectsWithStats.find { it.first.id == nextAssign.subjectId }?.first?.name ?: "Assignment"
+            Pair("$subName: ${nextAssign.name}", dueStr)
+        } else if (nextExam != null) {
+            val days = ((nextExam.date - now) / (24 * 3600 * 1000L)).toInt()
+            val dueStr = when {
+                days == 0 -> "Today"
+                days == 1 -> "Tomorrow"
+                else -> "In $days days"
+            }
+            val subName = subjectsWithStats.find { it.first.id == nextExam.subjectId }?.first?.name ?: "Exam"
+            Pair("$subName ${nextExam.examType.name}", dueStr)
+        } else {
+            null
+        }
+    }
 
     // Determine aggregate day status from marked records
     val dayStatusInfo = remember(todayLectures, colors) {
@@ -134,7 +220,317 @@ fun TodayScreen(
                 }
             }
 
-            // 3. Day Status Banner
+            // 3. TODAY COMMAND CENTER (Real Data)
+            item {
+                StudentCard(
+                    backgroundColor = colors.card,
+                    borderColor = colors.border,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Greeting & Heading
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = greeting,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.accent,
+                                letterSpacing = 1.1.sp
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colors.accent.copy(alpha = 0.1f),
+                                border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.25f))
+                            ) {
+                                Text(
+                                    text = "Command Center",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colors.accent,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        // YOUR DAY Metrics
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "YOUR DAY",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textSecondary,
+                                fontSize = 11.sp
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.elevatedCard,
+                                    border = BorderStroke(1.dp, colors.border),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("${todayLectures.size}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textPrimary)
+                                        Text("Classes", fontSize = 11.sp, color = colors.textSecondary)
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.elevatedCard,
+                                    border = BorderStroke(1.dp, colors.border),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("${pendingAssignments.size}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textPrimary)
+                                        Text("Assignments", fontSize = 11.sp, color = colors.textSecondary)
+                                    }
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = colors.elevatedCard,
+                                    border = BorderStroke(1.dp, colors.border),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text("${activeGoals.size}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colors.textPrimary)
+                                        Text("Goals", fontSize = 11.sp, color = colors.textSecondary)
+                                    }
+                                }
+                            }
+                        }
+
+                        // NEEDS ATTENTION (Smart Attendance Priority)
+                        if (criticalSubjectPair != null) {
+                            val (critSub, critStats) = criticalSubjectPair
+                            val critRec = viewModel.calculateRecommendation(
+                                critStats.attended,
+                                critStats.attended + critStats.missed,
+                                critSub.targetPercentage
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.danger.copy(alpha = 0.1f),
+                                border = BorderStroke(1.dp, colors.danger.copy(alpha = 0.35f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "NEEDS ATTENTION",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = colors.danger
+                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = colors.danger,
+                                            modifier = Modifier.padding(0.dp)
+                                        ) {
+                                            Text(
+                                                "HIGH PRIORITY",
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 9.sp,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        critSub.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                    Text(
+                                        "${String.format(Locale.US, "%.1f", critStats.percentage)}% attendance · Target ${critSub.targetPercentage.toInt()}%",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.danger,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        critRec,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.textSecondary
+                                    )
+                                }
+                            }
+                        }
+
+                        // RECOMMENDED TODAY
+                        if (studyRecommendation != null) {
+                            val (subId, subName, recDetail) = studyRecommendation
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.accent.copy(alpha = 0.08f),
+                                border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.25f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            "RECOMMENDED TODAY",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = colors.accent
+                                        )
+                                        Text(
+                                            subName,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            recDetail,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = colors.textSecondary
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            onStartStudySession?.invoke(subId, "Today Study", 45)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text("Start Session", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+
+                        // COMING UP
+                        if (comingUpItem != null) {
+                            val (comingTitle, comingBadge) = comingUpItem
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.elevatedCard,
+                                border = BorderStroke(1.dp, colors.border),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+                                        Text("COMING UP", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = colors.textSecondary)
+                                        Text(comingTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = colors.accent.copy(alpha = 0.15f),
+                                        border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.3f))
+                                    ) {
+                                        Text(comingBadge, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.accent, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                                    }
+                                }
+                            }
+                        }
+
+                        // QUICK ACTIONS (Section 11)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                "QUICK ACTIONS",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textSecondary,
+                                fontSize = 11.sp
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { showAddAssignDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, colors.border),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.accent)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Assignment", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                OutlinedButton(
+                                    onClick = { showAddTaskDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, colors.border),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.accent)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Task", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        val firstSub = subjectsWithStats.firstOrNull()?.first
+                                        onStartStudySession?.invoke(firstSub?.id ?: 0, "Study Session", 45)
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, colors.border),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.accent)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Study Session", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                                OutlinedButton(
+                                    onClick = { showAddGoalDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, colors.border),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.accent)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Goal", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Day Status Banner
             item {
                 DayStatusBanner(
                     statusTitle = dayStatusInfo.first,
@@ -243,6 +639,88 @@ fun TodayScreen(
                     )
                     showAddExtraDialog = false
                     Toast.makeText(context, "Extra lecture added", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+
+        // Quick Action: Add Assignment Dialog
+        if (showAddAssignDialog) {
+            val activeSubs = subjectsWithStats.map { it.first }.filter { !it.isArchived }
+            if (activeSubs.isNotEmpty()) {
+                AddAssignmentDialog(
+                    subjects = activeSubs,
+                    onDismiss = { showAddAssignDialog = false },
+                    onSave = { name, subId, desc, dueDays, priority ->
+                        coroutineScope.launch {
+                            val dueDate = System.currentTimeMillis() + (dueDays * 24 * 3600 * 1000L)
+                            repository.insertAssignment(
+                                Assignment(
+                                    subjectId = subId,
+                                    name = name,
+                                    description = desc,
+                                    assignedDate = System.currentTimeMillis(),
+                                    dueDate = dueDate,
+                                    priority = priority,
+                                    status = AssignmentStatus.NOT_STARTED
+                                )
+                            )
+                            Toast.makeText(context, "Assignment created", Toast.LENGTH_SHORT).show()
+                        }
+                        showAddAssignDialog = false
+                    }
+                )
+            } else {
+                Toast.makeText(context, "Please add a subject first", Toast.LENGTH_SHORT).show()
+                showAddAssignDialog = false
+            }
+        }
+
+        // Quick Action: Add Task Dialog
+        if (showAddTaskDialog) {
+            val activeSubs = subjectsWithStats.map { it.first }.filter { !it.isArchived }
+            AddTaskDialog(
+                subjects = activeSubs,
+                onDismiss = { showAddTaskDialog = false },
+                onSave = { title, desc, category, subId, priority, duration ->
+                    coroutineScope.launch {
+                        repository.insertTask(
+                            Task(
+                                subjectId = subId,
+                                title = title,
+                                description = desc,
+                                category = category,
+                                priority = priority,
+                                dueDate = System.currentTimeMillis() + 86400000L,
+                                estimatedDuration = duration,
+                                completed = false
+                            )
+                        )
+                        Toast.makeText(context, "Task created", Toast.LENGTH_SHORT).show()
+                    }
+                    showAddTaskDialog = false
+                }
+            )
+        }
+
+        // Quick Action: Add Goal Dialog
+        if (showAddGoalDialog) {
+            AddGoalDialog(
+                onDismiss = { showAddGoalDialog = false },
+                onSave = { title, target, dueDays ->
+                    coroutineScope.launch {
+                        val deadline = System.currentTimeMillis() + (dueDays * 24 * 3600 * 1000L)
+                        repository.insertGoal(
+                            Goal(
+                                title = title,
+                                target = target,
+                                currentProgress = 0.0,
+                                deadline = deadline,
+                                status = GoalStatus.ACTIVE
+                            )
+                        )
+                        Toast.makeText(context, "Goal created", Toast.LENGTH_SHORT).show()
+                    }
+                    showAddGoalDialog = false
                 }
             )
         }
@@ -583,6 +1061,95 @@ fun AddExtraLectureDialog(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Add Lecture", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = colors.textSecondary)
+            }
+        }
+    )
+}
+
+@Composable
+fun AddGoalDialog(
+    onDismiss: () -> Unit,
+    onSave: (String, Double, Int) -> Unit
+) {
+    val colors = LocalAppColors.current
+    var goalTitle by remember { mutableStateOf("") }
+    var goalTarget by remember { mutableStateOf("10") }
+    var goalDueDays by remember { mutableStateOf("14") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.card,
+        titleContentColor = colors.textPrimary,
+        textContentColor = colors.textPrimary,
+        title = {
+            Text(
+                "Add Academic Goal",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = goalTitle,
+                    onValueChange = { goalTitle = it },
+                    label = { Text("Goal Title (e.g. Complete DBMS Unit 2)") },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = goalTarget,
+                    onValueChange = { goalTarget = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Target Value (e.g. 10)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = goalDueDays,
+                    onValueChange = { goalDueDays = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Due in (Days from now)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val target = goalTarget.toDoubleOrNull() ?: 10.0
+                    val days = goalDueDays.toIntOrNull() ?: 14
+                    onSave(goalTitle, target, days)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                shape = RoundedCornerShape(10.dp),
+                enabled = goalTitle.isNotBlank()
+            ) {
+                Text("Save Goal", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

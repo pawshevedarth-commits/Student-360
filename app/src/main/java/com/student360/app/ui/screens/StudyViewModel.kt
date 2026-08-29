@@ -44,6 +44,10 @@ class StudyViewModel(application: Application) : AndroidViewModel(application) {
     private val _timerTopic = MutableStateFlow("")
     val timerTopic: StateFlow<String> = _timerTopic.asStateFlow()
 
+    private val _targetDurationMins = MutableStateFlow(45)
+    val targetDurationMins: StateFlow<Int> = _targetDurationMins.asStateFlow()
+
+    private var isSaving = false
     private var timerJob: Job? = null
 
     init {
@@ -64,11 +68,21 @@ class StudyViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun startTimer(subjectId: Int, topic: String) {
+    fun setTargetDuration(minutes: Int) {
+        _targetDurationMins.value = minutes
+    }
+
+    fun getStudyTimeForSubject(subjectId: Int): Int {
+        return _sessions.value.filter { it.subjectId == subjectId }.sumOf { it.duration }
+    }
+
+    fun startTimer(subjectId: Int, topic: String, durationMins: Int = _targetDurationMins.value) {
         _timerSubjectId.value = subjectId
         _timerTopic.value = topic
+        _targetDurationMins.value = durationMins
         _timerSeconds.value = 0
         _timerRunning.value = true
+        isSaving = false
         runTimer()
     }
 
@@ -83,14 +97,17 @@ class StudyViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopAndSaveTimer() {
+        if (isSaving) return
         _timerRunning.value = false
         timerJob?.cancel()
         
-        val durationMins = _timerSeconds.value / 60
+        val totalSecs = _timerSeconds.value
+        val durationMins = if (totalSecs >= 10) maxOf(1, totalSecs / 60) else 0
         val subId = _timerSubjectId.value
         val topic = _timerTopic.value
 
         if (subId != null && durationMins > 0) {
+            isSaving = true
             viewModelScope.launch {
                 val session = StudySession(
                     subjectId = subId,
@@ -100,6 +117,7 @@ class StudyViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 repository.insertStudySession(session)
                 resetTimer()
+                isSaving = false
             }
         } else {
             resetTimer()
@@ -129,7 +147,6 @@ class StudyViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getStudyStats(): StudyStats {
-        val now = System.currentTimeMillis()
         val cal = Calendar.getInstance()
         
         cal.set(Calendar.HOUR_OF_DAY, 0)

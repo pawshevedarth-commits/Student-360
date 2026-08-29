@@ -28,10 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.student360.app.data.local.entity.AttendanceHistory
-import com.student360.app.data.local.entity.AttendanceRecord
-import com.student360.app.data.local.entity.AttendanceStatus
-import com.student360.app.data.local.entity.Subject
+import com.student360.app.data.local.entity.*
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.data.repository.SubjectStats
 import com.student360.app.ui.components.StudentCard
@@ -57,6 +54,42 @@ fun SubjectDetailScreen(
     val stats = currentPair?.second
 
     val historyLogs by repository.getHistoryForSubjectFlow(subject.id).collectAsState(initial = emptyList())
+    val allStudySessions by repository.studySessionsFlow.collectAsState(initial = emptyList())
+    val studySessions = remember(allStudySessions, subject.id) {
+        allStudySessions.filter { it.subjectId == subject.id }
+    }
+    val allAssignments by repository.assignmentsFlow.collectAsState(initial = emptyList())
+    val allExams by repository.examsFlow.collectAsState(initial = emptyList())
+    val allTimetable by repository.timetableFlow.collectAsState(initial = emptyList())
+
+    val totalStudyMins = remember(studySessions) {
+        studySessions.sumOf { it.duration }
+    }
+    val studyTimeStr = remember(totalStudyMins) {
+        val h = totalStudyMins / 60
+        val m = totalStudyMins % 60
+        if (h > 0) "${h}h ${m}m" else "${m}m"
+    }
+
+    val subjectAssignments = remember(allAssignments, subject.id) {
+        allAssignments.filter { it.subjectId == subject.id }
+    }
+    val completedAssignsCount = remember(subjectAssignments) {
+        subjectAssignments.count { it.status == AssignmentStatus.COMPLETED }
+    }
+
+    val subjectExams = remember(allExams, subject.id) {
+        allExams.filter { it.subjectId == subject.id && it.date >= System.currentTimeMillis() - 86400000L }
+            .sortedBy { it.date }
+    }
+    val upcomingAssigns = remember(subjectAssignments) {
+        subjectAssignments.filter { it.status != AssignmentStatus.COMPLETED && it.dueDate >= System.currentTimeMillis() - 86400000L }
+            .sortedBy { it.dueDate }
+    }
+    val scheduledDaysStr = remember(allTimetable, subject.id) {
+        val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        allTimetable.filter { it.subjectId == subject.id }.map { days[it.dayOfWeek.coerceIn(0, 6)] }.distinct().joinToString(", ")
+    }
 
     var selectedStatusFilter by remember { mutableStateOf<AttendanceStatus?>(null) }
     var editingRecord by remember { mutableStateOf<AttendanceRecord?>(null) }
@@ -343,6 +376,128 @@ fun SubjectDetailScreen(
                                 MetricColumn(title = "Off", value = "${stats?.off ?: 0}", color = colors.warning)
                                 MetricColumn(title = "Total", value = "$totalConducted", color = colors.textPrimary)
                             }
+                        }
+                    }
+                }
+            }
+
+            // Academic Overview Card (Attendance, Study Time, Assignments)
+            item {
+                StudentCard(
+                    backgroundColor = colors.card,
+                    borderColor = colors.border,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Academic Overview",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.elevatedCard,
+                                border = BorderStroke(1.dp, colors.border),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("${String.format(Locale.US, "%.1f", percentage)}%", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = statusColor)
+                                    Text("Attendance", fontSize = 11.sp, color = colors.textSecondary)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.elevatedCard,
+                                border = BorderStroke(1.dp, colors.border),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(studyTimeStr, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = colors.accent)
+                                    Text("Study Time", fontSize = 11.sp, color = colors.textSecondary)
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = colors.elevatedCard,
+                                border = BorderStroke(1.dp, colors.border),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("$completedAssignsCount/${subjectAssignments.size}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = colors.textPrimary)
+                                    Text("Assignments", fontSize = 11.sp, color = colors.textSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Upcoming for Subject (Classes, Assignments, Tests)
+            item {
+                StudentCard(
+                    backgroundColor = colors.card,
+                    borderColor = colors.border,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Upcoming for ${currentSubject.name}",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        if (scheduledDaysStr.isNotBlank()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Weekly Classes", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                                Text(scheduledDaysStr, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = colors.accent)
+                            }
+                        }
+                        if (upcomingAssigns.isNotEmpty()) {
+                            upcomingAssigns.take(2).forEach { assign ->
+                                val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(assign.dueDate))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(assign.name, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text(dateStr, style = MaterialTheme.typography.labelSmall, color = colors.danger, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                        if (subjectExams.isNotEmpty()) {
+                            subjectExams.take(2).forEach { ex ->
+                                val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(ex.date))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("${ex.examType.name} Test", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                                    Text(dateStr, style = MaterialTheme.typography.labelSmall, color = colors.warning, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                        if (scheduledDaysStr.isBlank() && upcomingAssigns.isEmpty() && subjectExams.isEmpty()) {
+                            Text("No upcoming classes, assignments, or exams recorded.", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                         }
                     }
                 }

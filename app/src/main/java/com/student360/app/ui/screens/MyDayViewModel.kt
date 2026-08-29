@@ -136,7 +136,9 @@ class MyDayViewModel(application: Application) : AndroidViewModel(application) {
                             AssignmentPriority.URGENT -> TaskPriority.URGENT
                         },
                         completed = assign.status == AssignmentStatus.COMPLETED,
-                        rawId = assign.id
+                        rawId = assign.id,
+                        dueDate = assign.dueDate,
+                        subjectId = assign.subjectId
                     )
                 )
             }
@@ -228,6 +230,24 @@ class MyDayViewModel(application: Application) : AndroidViewModel(application) {
         }
         return cal.timeInMillis
     }
+
+    fun addToStudyPlan(item: MyDayItem) {
+        viewModelScope.launch {
+            repository.insertTask(
+                Task(
+                    subjectId = item.subjectId,
+                    title = "Study: ${item.title}",
+                    description = "Daily study block for assignment",
+                    category = TaskCategory.STUDY,
+                    priority = item.priority,
+                    dueDate = System.currentTimeMillis() + 86400000L,
+                    estimatedDuration = 60,
+                    completed = false
+                )
+            )
+            refreshMyDay()
+        }
+    }
 }
 
 data class MyDayItem(
@@ -237,5 +257,7 @@ data class MyDayItem(
     val category: String, // COLLEGE, STUDY, ASSIGNMENTS, PERSONAL
     val priority: TaskPriority,
     val completed: Boolean,
-    val rawId: Int
+    val rawId: Int,
+    val dueDate: Long = 0L,
+    val subjectId: Int? = null
 )

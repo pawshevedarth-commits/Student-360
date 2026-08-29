@@ -52,6 +52,8 @@ fun StudyScreen(
     var subjectDropdownExpanded by remember { mutableStateOf(false) }
 
     var showAddGoalDialog by remember { mutableStateOf(false) }
+    var showCustomDurationDialog by remember { mutableStateOf(false) }
+    var customDurationInput by remember { mutableStateOf("30") }
     var editGoalProgressTarget by remember { mutableStateOf<Goal?>(null) }
     var sessionCompletionInfo by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
@@ -82,9 +84,16 @@ fun StudyScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Subject Selector Before Starting
+                    // Subject Selector & Duration Before Starting
                     if (!timerRunning && timerSeconds == 0) {
                         if (subjects.isNotEmpty()) {
+                            Text(
+                                "What are you studying?",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Box {
                                 Surface(
                                     shape = RoundedCornerShape(10.dp),
@@ -129,7 +138,51 @@ fun StudyScreen(
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                "Duration:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val targetDuration by viewModel.targetDurationMins.collectAsState()
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(25, 45, 60).forEach { mins ->
+                                    val isSelected = targetDuration == mins
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) colors.accent else colors.elevatedCard,
+                                        border = BorderStroke(1.dp, if (isSelected) colors.accent else colors.border),
+                                        modifier = Modifier.clickable { viewModel.setTargetDuration(mins) }
+                                    ) {
+                                        Text(
+                                            text = "$mins min",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) Color.White else colors.textPrimary,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                                val isCustom = targetDuration !in listOf(25, 45, 60)
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isCustom) colors.accent else colors.elevatedCard,
+                                    border = BorderStroke(1.dp, if (isCustom) colors.accent else colors.border),
+                                    modifier = Modifier.clickable { showCustomDurationDialog = true }
+                                ) {
+                                    Text(
+                                        text = if (isCustom) "$targetDuration min" else "Custom",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isCustom) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isCustom) Color.White else colors.textPrimary,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(14.dp))
                         }
                     } else if (timerSubjectId != null) {
                         val subName = subjects.find { it.id == timerSubjectId }?.name ?: "Subject"
@@ -156,6 +209,13 @@ fun StudyScreen(
                         color = colors.accent,
                         letterSpacing = 1.sp
                     )
+                    if (timerTopic.isNotBlank()) {
+                        Text(
+                            text = timerTopic,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.textSecondary
+                        )
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = formattedTime,
@@ -278,6 +338,43 @@ fun StudyScreen(
             }
         }
 
+        // Subject-wise Study Time Breakdown
+        if (subjects.isNotEmpty()) {
+            item {
+                SectionHeader(title = "Subject-wise Study Time")
+            }
+            items(subjects) { sub ->
+                val subMins = viewModel.getStudyTimeForSubject(sub.id)
+                val hours = subMins / 60
+                val mins = subMins % 60
+                val timeStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
+                StudentCard(
+                    backgroundColor = colors.card,
+                    borderColor = colors.border,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = sub.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary
+                        )
+                        Text(
+                            text = timeStr,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.accent
+                        )
+                    }
+                }
+            }
+        }
+
         // Academic Goals list
         item {
             SectionHeader(
@@ -380,6 +477,59 @@ fun StudyScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Done", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // Custom Duration Dialog
+    if (showCustomDurationDialog) {
+        AlertDialog(
+            onDismissRequest = { showCustomDurationDialog = false },
+            containerColor = colors.card,
+            titleContentColor = colors.textPrimary,
+            title = {
+                Text(
+                    "Custom Duration",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Enter duration in minutes:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary
+                    )
+                    OutlinedTextField(
+                        value = customDurationInput,
+                        onValueChange = { customDurationInput = it.filter { ch -> ch.isDigit() } },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val mins = customDurationInput.toIntOrNull() ?: 30
+                        if (mins > 0) {
+                            viewModel.setTargetDuration(mins)
+                        }
+                        showCustomDurationDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Set Duration", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDurationDialog = false }) {
+                    Text("Cancel", color = colors.textSecondary)
                 }
             }
         )

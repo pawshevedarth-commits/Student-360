@@ -3,6 +3,10 @@ package com.student360.app.ui.screens
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.student360.app.data.local.entity.Assignment
+import com.student360.app.data.local.entity.AssignmentStatus
+import com.student360.app.data.local.entity.Goal
+import com.student360.app.data.local.entity.GoalStatus
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.service.StudyAssistant
@@ -22,26 +26,47 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
     private val _plannedSchedule = MutableStateFlow<List<StudyAssistant.ScheduleBlock>>(emptyList())
     val plannedSchedule: StateFlow<List<StudyAssistant.ScheduleBlock>> = _plannedSchedule.asStateFlow()
 
+    private val _assignments = MutableStateFlow<List<Assignment>>(emptyList())
+    private val _goals = MutableStateFlow<List<Goal>>(emptyList())
+
     init {
+        viewModelScope.launch {
+            repository.assignmentsFlow.collectLatest {
+                _assignments.value = it.filter { a -> a.status != AssignmentStatus.COMPLETED }
+                loadData()
+            }
+        }
+        viewModelScope.launch {
+            repository.goalsFlow.collectLatest {
+                _goals.value = it.filter { g -> g.status == GoalStatus.ACTIVE }
+                loadData()
+            }
+        }
         loadData()
     }
 
     fun loadData() {
         viewModelScope.launch {
-            repository.subjectsFlow.collectLatest { subjects ->
-                val list = mutableListOf<StudyAssistant.RecommendationCandidate>()
-                subjects.forEach { subject ->
-                    val stats = repository.getSubjectStats(subject.id)
-                    val exams = repository.getAllExams().filter { it.subjectId == subject.id }
-                    val nextExam = exams.filter { it.date >= System.currentTimeMillis() }
-                        .minByOrNull { it.date }
-                    val topics = nextExam?.let { repository.getTopicsForExam(it.id) } ?: emptyList()
+            val subjects = repository.getAllSubjects()
+            val list = mutableListOf<StudyAssistant.RecommendationCandidate>()
+            subjects.forEach { subject ->
+                val stats = repository.getSubjectStats(subject.id)
+                val exams = repository.getAllExams().filter { it.subjectId == subject.id }
+                val nextExam = exams.filter { it.date >= System.currentTimeMillis() }
+                    .minByOrNull { it.date }
+                val topics = nextExam?.let { repository.getTopicsForExam(it.id) } ?: emptyList()
 
-                    val candidate = StudyAssistant.calculatePriorityScore(subject, stats, nextExam, topics)
-                    list.add(candidate)
-                }
-                _candidates.value = list.sortedByDescending { it.priorityScore }
+                val candidate = StudyAssistant.calculatePriorityScore(
+                    subject = subject,
+                    stats = stats,
+                    nextExam = nextExam,
+                    topics = topics,
+                    pendingAssignments = _assignments.value,
+                    activeGoals = _goals.value
+                )
+                list.add(candidate)
             }
+            _candidates.value = list.sortedByDescending { it.priorityScore }
         }
     }
 
@@ -49,6 +74,16 @@ class AssistantViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             loadData()
             _plannedSchedule.value = StudyAssistant.planMyDay(_candidates.value, availableHours)
+        }
+    }
+
+    fun toggleBlockCompleted(blockId: String) {
+        _plannedSchedule.value = _plannedSchedule.value.map { block ->
+            if (block.id == blockId) {
+                block.copy(isCompleted = !block.isCompleted)
+            } else {
+                block
+            }
         }
     }
 }

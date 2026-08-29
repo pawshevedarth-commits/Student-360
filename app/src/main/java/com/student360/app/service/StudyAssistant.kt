@@ -1,5 +1,7 @@
 package com.student360.app.service
 
+import com.student360.app.data.local.entity.Assignment
+import com.student360.app.data.local.entity.Goal
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.local.entity.Exam
 import com.student360.app.data.local.entity.ExamTopic
@@ -15,18 +17,22 @@ object StudyAssistant {
         val nextExam: Exam?,
         val topics: List<ExamTopic>,
         val priorityScore: Double,
-        val reason: String
+        val reason: String,
+        val pendingAssignment: Assignment? = null
     )
 
     fun calculatePriorityScore(
         subject: Subject,
         stats: SubjectStats,
         nextExam: Exam?,
-        topics: List<ExamTopic>
+        topics: List<ExamTopic>,
+        pendingAssignments: List<Assignment> = emptyList(),
+        activeGoals: List<Goal> = emptyList()
     ): RecommendationCandidate {
         val weightExam = 50.0
         val weightPrep = 30.0
-        val extraWeight = 20.0
+        val extraWeight = 25.0
+        val assignmentWeight = 35.0
 
         var urgencyScore = 0.0
         var reasonExam = ""
@@ -42,11 +48,28 @@ object StudyAssistant {
 
         val isBelowTarget = stats.percentage < subject.targetPercentage
         val attendancePenalty = if (isBelowTarget) extraWeight else 0.0
-        val reasonAttendance = if (isBelowTarget) "Attendance (${String.format("%.1f", stats.percentage)}%) is below target (${subject.targetPercentage.toInt()}%). " else ""
+        val reasonAttendance = if (isBelowTarget) "Attendance (${String.format(Locale.US, "%.1f", stats.percentage)}%) is below target (${subject.targetPercentage.toInt()}%). " else ""
 
-        val totalScore = urgencyScore + weaknessScore + attendancePenalty
+        // Check for pending assignments due within 4 days
+        val subjectAssignments = pendingAssignments.filter { it.subjectId == subject.id }
+        val nearestAssignment = subjectAssignments.minByOrNull { it.dueDate }
+        var assignmentScore = 0.0
+        var reasonAssignment = ""
+        if (nearestAssignment != null) {
+            val now = System.currentTimeMillis()
+            val daysUntilDue = ((nearestAssignment.dueDate - now) / (24 * 3600 * 1000L)).coerceAtLeast(0)
+            if (daysUntilDue <= 4) {
+                assignmentScore = assignmentWeight / (daysUntilDue + 1).toDouble()
+                reasonAssignment = "${nearestAssignment.name} due in $daysUntilDue days. "
+            }
+        }
+        val hasLinkedGoal = activeGoals.any { it.title.contains(subject.name, ignoreCase = true) }
+        val goalScore = if (hasLinkedGoal) 15.0 else 0.0
+        val reasonGoal = if (hasLinkedGoal) "Active study goal linked. " else ""
+
+        val totalScore = urgencyScore + weaknessScore + attendancePenalty + assignmentScore + goalScore
         
-        val reason = (reasonExam + reasonPrep + reasonAttendance).trim().ifBlank { "Regular revision scheduled." }
+        val reason = (reasonAttendance + reasonAssignment + reasonGoal + reasonExam + reasonPrep).trim().ifBlank { "Regular revision scheduled." }
 
         return RecommendationCandidate(
             subject = subject,
@@ -54,15 +77,21 @@ object StudyAssistant {
             nextExam = nextExam,
             topics = topics,
             priorityScore = totalScore,
-            reason = reason
+            reason = reason,
+            pendingAssignment = nearestAssignment
         )
     }
 
     data class ScheduleBlock(
+        val id: String = UUID.randomUUID().toString(),
         val startTime: String,
         val endTime: String,
         val label: String,
-        val isBreak: Boolean = false
+        val subject: Subject? = null,
+        val topic: String = "Revision",
+        val durationMins: Int = 45,
+        val isBreak: Boolean = false,
+        val isCompleted: Boolean = false
     )
 
     fun planMyDay(
@@ -94,11 +123,24 @@ object StudyAssistant {
             val endStr = timeFormat.format(calendar.time)
 
             val candidate = sortedCandidates[candidateIndex % sortedCandidates.size]
+            val topicName = if (candidate.pendingAssignment != null) {
+                "Assignment: ${candidate.pendingAssignment.name}"
+            } else if (candidate.topics.isNotEmpty()) {
+                candidate.topics.first().topicName
+            } else {
+                "Revision"
+            }
+
             blocks.add(
                 ScheduleBlock(
                     startTime = startStr,
                     endTime = endStr,
-                    label = "${candidate.subject.name} - Study Session (${candidate.subject.code})"
+                    label = "${candidate.subject.name} - $topicName",
+                    subject = candidate.subject,
+                    topic = topicName,
+                    durationMins = blockLength,
+                    isBreak = false,
+                    isCompleted = false
                 )
             )
 
@@ -116,6 +158,7 @@ object StudyAssistant {
                         startTime = breakStart,
                         endTime = breakEnd,
                         label = "Break",
+                        durationMins = breakLength,
                         isBreak = true
                     )
                 )

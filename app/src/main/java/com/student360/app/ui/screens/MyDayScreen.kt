@@ -22,6 +22,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +47,7 @@ fun MyDayScreen(
     viewModel: MyDayViewModel = viewModel()
 ) {
     val colors = LocalAppColors.current
+    val context = LocalContext.current
     val myDayItems by viewModel.myDayItems.collectAsState()
     val progress by viewModel.completionPercentage.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
@@ -233,7 +236,11 @@ fun MyDayScreen(
                             items(catItems) { item ->
                                 MyDayChecklistItem(
                                     item = item,
-                                    onToggle = { checked -> viewModel.toggleItemCompleted(item, checked) }
+                                    onToggle = { checked -> viewModel.toggleItemCompleted(item, checked) },
+                                    onAddToStudyPlan = { assignItem ->
+                                        viewModel.addToStudyPlan(assignItem)
+                                        Toast.makeText(context, "Added 1 hr study block for ${assignItem.title} to study plan", Toast.LENGTH_SHORT).show()
+                                    }
                                 )
                             }
                         }
@@ -338,7 +345,8 @@ fun MyDayScreen(
 @Composable
 fun MyDayChecklistItem(
     item: MyDayItem,
-    onToggle: (Boolean) -> Unit
+    onToggle: (Boolean) -> Unit,
+    onAddToStudyPlan: ((MyDayItem) -> Unit)? = null
 ) {
     val colors = LocalAppColors.current
     val prioColor = when (item.priority) {
@@ -352,61 +360,114 @@ fun MyDayChecklistItem(
         backgroundColor = if (item.completed) colors.card.copy(alpha = 0.5f) else colors.card,
         borderColor = if (item.completed) colors.border.copy(alpha = 0.4f) else colors.border
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (item.category == "COLLEGE") {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(colors.accent.copy(alpha = 0.15f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🏛", style = MaterialTheme.typography.labelSmall)
-                    }
-                } else {
-                    Checkbox(
-                        checked = item.completed,
-                        onCheckedChange = onToggle,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = colors.success,
-                            uncheckedColor = colors.textSecondary,
-                            checkmarkColor = Color.White
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        item.title,
-                        fontWeight = if (item.completed) FontWeight.Normal else FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (item.completed) colors.textSecondary else colors.textPrimary,
-                        textDecoration = if (item.completed) TextDecoration.LineThrough else TextDecoration.None,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        item.subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textSecondary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (item.category == "COLLEGE") {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(colors.accent.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🏛", style = MaterialTheme.typography.labelSmall)
+                        }
+                    } else {
+                        Checkbox(
+                            checked = item.completed,
+                            onCheckedChange = onToggle,
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = colors.success,
+                                uncheckedColor = colors.textSecondary,
+                                checkmarkColor = Color.White
+                            )
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            item.title,
+                            fontWeight = if (item.completed) FontWeight.Normal else FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (item.completed) colors.textSecondary else colors.textPrimary,
+                            textDecoration = if (item.completed) TextDecoration.LineThrough else TextDecoration.None,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            item.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                if (item.category != "COLLEGE" && !item.completed) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StatusBadge(text = item.priority.name, color = prioColor)
                 }
             }
-            if (item.category != "COLLEGE" && !item.completed) {
-                Spacer(modifier = Modifier.width(8.dp))
-                StatusBadge(text = item.priority.name, color = prioColor)
+
+            // Assignment Study Plan Integration (Section 6)
+            if (item.category == "ASSIGNMENTS" && !item.completed && item.dueDate > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val daysRem = remember(item.dueDate) {
+                    val d = ((item.dueDate - System.currentTimeMillis()) / (24 * 3600 * 1000L)).toInt()
+                    if (d <= 0) 1 else d
+                }
+                val dailyMins = remember(daysRem) {
+                    (180 / daysRem).coerceIn(30, 90)
+                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = colors.elevatedCard,
+                    border = BorderStroke(1.dp, colors.border),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Due in $daysRem days • Est. 3 hours",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.textSecondary,
+                                fontSize = 11.sp
+                            )
+                            Button(
+                                onClick = { onAddToStudyPlan?.invoke(item) },
+                                colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text("+ Add to Study Plan", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                        Text(
+                            if (daysRem > 1) "Suggested: Today: ${dailyMins}m · Next days: ${dailyMins}m/day" else "Suggested: Today: 2-3 hours",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.accent,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
             }
         }
     }

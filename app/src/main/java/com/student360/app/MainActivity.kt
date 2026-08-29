@@ -100,6 +100,7 @@ fun MainShell(repository: StudentRepository) {
     val attendanceViewModel: AttendanceViewModel = viewModel()
     val scheduleViewModel: ScheduleViewModel = viewModel()
     val settingsViewModel: SettingsViewModel = viewModel()
+    val studyViewModel: StudyViewModel = viewModel()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -350,7 +351,11 @@ fun MainShell(repository: StudentRepository) {
                             Screen.TODAY -> TodayScreen(
                                 repository = repository,
                                 viewModel = attendanceViewModel,
-                                onNavigateToSettings = { currentScreen = Screen.SETTINGS }
+                                onNavigateToSettings = { currentScreen = Screen.SETTINGS },
+                                onStartStudySession = { subjectId, topic, durationMins ->
+                                    studyViewModel.startTimer(subjectId, topic, durationMins)
+                                    currentScreen = Screen.STUDY
+                                }
                             )
                             Screen.ATTENDANCE -> AttendanceScreen(
                                 repository = repository,
@@ -380,9 +385,16 @@ fun MainShell(repository: StudentRepository) {
                             Screen.MY_DAY -> MyDayScreen(repository)
                             Screen.STUDY -> StudyScreen(
                                 repository = repository,
+                                viewModel = studyViewModel,
                                 onNavigateToProgress = { currentScreen = Screen.PROGRESS }
                             )
-                            Screen.ASSISTANT -> AssistantScreen(repository)
+                            Screen.ASSISTANT -> AssistantScreen(
+                                repository = repository,
+                                onStartSession = { subjectId, topic, durationMins ->
+                                    studyViewModel.startTimer(subjectId, topic, durationMins)
+                                    currentScreen = Screen.STUDY
+                                }
+                            )
                             Screen.EXAMS -> ExamsScreen(repository)
                             Screen.PROGRESS -> ProgressScreen(repository)
                             Screen.ALERTS -> AlertsScreen(repository)

@@ -11,6 +11,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,8 @@ import com.student360.app.ui.theme.*
 @Composable
 fun AssistantScreen(
     repository: StudentRepository,
-    viewModel: AssistantViewModel = viewModel()
+    viewModel: AssistantViewModel = viewModel(),
+    onStartSession: ((subjectId: Int, topic: String, durationMins: Int) -> Unit)? = null
 ) {
     val colors = LocalAppColors.current
     val candidates by viewModel.candidates.collectAsState()
@@ -121,6 +124,20 @@ fun AssistantScreen(
                         color = colors.textSecondary,
                         fontSize = 13.sp
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            onStartSession?.invoke(top.subject.id, "Priority Study", 45)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Start 45m Session", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                    }
                 }
             }
         }
@@ -175,7 +192,7 @@ fun AssistantScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
                         shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("⚡ Generate My Study Plan", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -193,7 +210,7 @@ fun AssistantScreen(
             items(schedule) { block ->
                 StudentCard(
                     backgroundColor = if (block.isBreak) colors.elevatedCard else colors.card,
-                    borderColor = if (block.isBreak) colors.border.copy(alpha = 0.5f) else colors.success.copy(alpha = 0.35f),
+                    borderColor = if (block.isBreak) colors.border.copy(alpha = 0.5f) else (if (block.isCompleted) colors.success.copy(alpha = 0.5f) else colors.accent.copy(alpha = 0.35f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -230,9 +247,31 @@ fun AssistantScreen(
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    "${block.startTime} - ${block.endTime}",
+                                    "${block.startTime} - ${block.endTime} (${block.durationMins} min)",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = colors.textSecondary
+                                )
+                            }
+                        }
+
+                        if (!block.isBreak) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        onStartSession?.invoke(block.subject?.id ?: 0, block.topic, block.durationMins)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = colors.accent),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text("Start Session", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                                Checkbox(
+                                    checked = block.isCompleted,
+                                    onCheckedChange = { viewModel.toggleBlockCompleted(block.id) }
                                 )
                             }
                         }

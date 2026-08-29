@@ -19,11 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.student360.app.data.local.entity.AttendanceRecord
-import com.student360.app.data.local.entity.AttendanceStatus
-import com.student360.app.data.local.entity.CollegeDay
-import com.student360.app.data.local.entity.DayStatus
+import com.student360.app.data.local.entity.*
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
@@ -41,6 +39,42 @@ fun ProgressScreen(
     val trendsText by viewModel.trendsText.collectAsState()
     val subjects by viewModel.subjects.collectAsState()
 
+    val studySessions by repository.studySessionsFlow.collectAsState(initial = emptyList())
+    val allAssignments by repository.assignmentsFlow.collectAsState(initial = emptyList())
+    val allGoals by repository.goalsFlow.collectAsState(initial = emptyList())
+
+    val oneWeekAgo = remember { System.currentTimeMillis() - (7 * 24 * 3600 * 1000L) }
+
+    val weeklyStudyMins = remember(studySessions, oneWeekAgo) {
+        studySessions.filter { it.dateCompleted >= oneWeekAgo }.sumOf { it.duration }
+    }
+    val weeklyStudyStr = remember(weeklyStudyMins) {
+        val h = weeklyStudyMins / 60
+        val m = weeklyStudyMins % 60
+        if (h > 0) "${h}h ${m}m" else "${m}m"
+    }
+
+    val weeklyRecords = remember(records, oneWeekAgo) {
+        records.filter { it.date >= oneWeekAgo }
+    }
+    val weeklyAttended = remember(weeklyRecords) {
+        weeklyRecords.count { it.status == AttendanceStatus.PRESENT }
+    }
+    val weeklyConducted = remember(weeklyRecords) {
+        weeklyRecords.count { it.status == AttendanceStatus.PRESENT || it.status == AttendanceStatus.ABSENT }
+    }
+    val weeklyAttendancePct = remember(weeklyAttended, weeklyConducted) {
+        if (weeklyConducted > 0) (weeklyAttended.toDouble() / weeklyConducted * 100.0) else 100.0
+    }
+
+    val weeklyCompletedAssigns = remember(allAssignments) {
+        allAssignments.count { it.status == AssignmentStatus.COMPLETED }
+    }
+
+    val activeGoalsCount = remember(allGoals) {
+        allGoals.count { it.status == GoalStatus.ACTIVE }
+    }
+
     var showConfigDialog by remember { mutableStateOf(false) }
     var configDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var selectedDayStatus by remember { mutableStateOf(DayStatus.HOLIDAY) }
@@ -54,6 +88,128 @@ fun ProgressScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Weekly Overview Card (Section 10)
+        item {
+            StudentCard(
+                backgroundColor = colors.card,
+                borderColor = colors.border,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Weekly Overview",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                            fontSize = 17.sp
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.accent.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.25f))
+                        ) {
+                            Text(
+                                "Past 7 Days",
+                                color = colors.accent,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    // Grid of 5 clean metrics: Study Time, Classes, Assignments, Attendance, Goals
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(weeklyStudyStr, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = colors.accent)
+                                Text("Study Time", fontSize = 11.sp, color = colors.textSecondary)
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("${weeklyRecords.size}", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = colors.textPrimary)
+                                Text("Classes", fontSize = 11.sp, color = colors.textSecondary)
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("${weeklyCompletedAssigns}/${allAssignments.size}", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = colors.textPrimary)
+                                Text("Assignments", fontSize = 11.sp, color = colors.textSecondary)
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                val attColor = if (weeklyAttendancePct >= 75.0) colors.success else colors.danger
+                                Text("${String.format(Locale.US, "%.1f", weeklyAttendancePct)}%", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = attColor)
+                                Text("Attendance", fontSize = 11.sp, color = colors.textSecondary)
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = colors.elevatedCard,
+                            border = BorderStroke(1.dp, colors.border),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("$activeGoalsCount", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = colors.textPrimary)
+                                Text("Active Goals", fontSize = 11.sp, color = colors.textSecondary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Attendance Trend Summary Card
         item {
             StudentCard(

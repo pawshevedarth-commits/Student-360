@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.student360.app.data.local.entity.AttendanceStatus
+import com.student360.app.data.local.entity.Exam
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.ui.components.QuickAttendanceRoundButton
 import com.student360.app.ui.components.StudentCard
@@ -49,6 +50,13 @@ fun CalendarScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val todayLectures by viewModel.todayLectures.collectAsState()
     val currentMonth by viewModel.currentMonth.collectAsState()
+    val allExams by repository.examsFlow.collectAsState(initial = emptyList())
+    val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
+
+    val selectedDateExams = remember(allExams, selectedDate) {
+        val selDay = getStartOfDay(selectedDate)
+        allExams.filter { getStartOfDay(it.date) == selDay }
+    }
 
     val monthFormatter = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val dayFormatter = remember { SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()) }
@@ -236,6 +244,7 @@ fun CalendarScreen(
                                                 DayAttendanceState.NOT_MARKED -> colors.textSecondary.copy(alpha = 0.5f)
                                                 null -> null
                                             }
+                                            val hasExam = allExams.any { getStartOfDay(it.date) == dayTime }
 
                                             Column(
                                                 modifier = Modifier
@@ -260,17 +269,30 @@ fun CalendarScreen(
                                                     color = if (isSelected) (if (colors.isDark) Color.White else colors.accent) else colors.textPrimary,
                                                     fontSize = 12.sp
                                                 )
-                                                if (dotColor != null) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(4.5.dp)
-                                                            .background(
-                                                                if (isSelected) (if (colors.isDark) Color.White else colors.accent) else dotColor,
-                                                                CircleShape
-                                                            )
-                                                    )
-                                                } else {
-                                                    Spacer(modifier = Modifier.height(4.5.dp))
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                                ) {
+                                                    if (dotColor != null) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(4.dp)
+                                                                .background(
+                                                                    if (isSelected) (if (colors.isDark) Color.White else colors.accent) else dotColor,
+                                                                    CircleShape
+                                                                )
+                                                        )
+                                                    }
+                                                    if (hasExam) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(4.dp)
+                                                                .background(
+                                                                    if (isSelected) Color.White else Color(0xFF9333EA),
+                                                                    CircleShape
+                                                                )
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -294,6 +316,7 @@ fun CalendarScreen(
                     StatusPillBadge(label = "Missed: ${summary.missedDays}", dotColor = colors.danger)
                     StatusPillBadge(label = "Mixed: ${summary.mixedDays}", dotColor = colors.accent)
                     StatusPillBadge(label = "Off: ${summary.offDays}", dotColor = colors.warning)
+                    StatusPillBadge(label = "Exam", dotColor = Color(0xFF9333EA))
                     StatusPillBadge(label = "Not marked: ${summary.notMarkedDays}", dotColor = colors.textSecondary.copy(alpha = 0.5f))
                 }
             }
@@ -406,6 +429,57 @@ fun CalendarScreen(
                             color = colors.accent,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+                }
+            }
+
+            // Selected Date Exams
+            if (selectedDateExams.isNotEmpty()) {
+                items(selectedDateExams) { exam ->
+                    val sub = subjectsWithStats.find { it.first.id == exam.subjectId }?.first
+                    StudentCard(
+                        backgroundColor = Color(0xFF9333EA).copy(alpha = 0.1f),
+                        borderColor = Color(0xFF9333EA).copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("🚨", fontSize = 18.sp)
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = "${sub?.name ?: "Subject"} (${exam.examType.name})",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary
+                                    )
+                                    Text(
+                                        text = "Time: ${exam.time} • Venue: ${exam.venue.ifBlank { "Main Hall" }}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = colors.textSecondary
+                                    )
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFF9333EA)
+                            ) {
+                                Text(
+                                    text = "EXAM",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
