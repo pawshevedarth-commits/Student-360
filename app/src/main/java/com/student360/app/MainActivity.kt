@@ -161,7 +161,11 @@ fun MainShell(repository: StudentRepository) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     val drawerItems = listOf(
-                        Screen.HOME to Icons.Default.Home,
+                        Screen.TODAY to Icons.Default.Home,
+                        Screen.ATTENDANCE to Icons.Default.Check,
+                        Screen.TIMETABLE to Icons.Default.Menu,
+                        Screen.CALENDAR to Icons.Default.DateRange,
+                        Screen.SUBJECTS to Icons.Default.List,
                         Screen.MY_DAY to Icons.Default.Check,
                         Screen.STUDY to Icons.Default.PlayArrow,
                         Screen.ASSISTANT to Icons.Default.Star,
@@ -289,13 +293,23 @@ fun MainShell(repository: StudentRepository) {
                             }
                         )
                         ReferenceBottomNavItem(
-                            icon = Icons.Default.Menu,
-                            label = "Timetable",
+                            icon = Icons.Default.Check,
+                            label = "Attendance",
                             isSelected = (currentScreen == Screen.ATTENDANCE && activeDetailSubject == null),
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.ATTENDANCE
+                            }
+                        )
+                        ReferenceBottomNavItem(
+                            icon = Icons.Default.Menu,
+                            label = "Timetable",
+                            isSelected = (currentScreen == Screen.TIMETABLE && activeDetailSubject == null),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                activeDetailSubject = null
+                                currentScreen = Screen.TIMETABLE
                             }
                         )
                         ReferenceBottomNavItem(
@@ -316,16 +330,6 @@ fun MainShell(repository: StudentRepository) {
                             onClick = {
                                 activeDetailSubject = null
                                 currentScreen = Screen.SUBJECTS
-                            }
-                        )
-                        ReferenceBottomNavItem(
-                            icon = Icons.Default.Settings,
-                            label = "Settings",
-                            isSelected = (currentScreen == Screen.SETTINGS && activeDetailSubject == null),
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                activeDetailSubject = null
-                                currentScreen = Screen.SETTINGS
                             }
                         )
                     }
@@ -351,13 +355,20 @@ fun MainShell(repository: StudentRepository) {
                             Screen.TODAY -> TodayScreen(
                                 repository = repository,
                                 viewModel = attendanceViewModel,
+                                onNavigateToAttendance = { currentScreen = Screen.ATTENDANCE },
                                 onNavigateToSettings = { currentScreen = Screen.SETTINGS },
                                 onStartStudySession = { subjectId, topic, durationMins ->
                                     studyViewModel.startTimer(subjectId, topic, durationMins)
                                     currentScreen = Screen.STUDY
                                 }
                             )
-                            Screen.ATTENDANCE -> AttendanceScreen(
+                            Screen.ATTENDANCE -> AttendanceManagementScreen(
+                                repository = repository,
+                                viewModel = attendanceViewModel,
+                                onNavigateToSubjectDetail = { sub -> activeDetailSubject = sub },
+                                onNavigateToSettings = { currentScreen = Screen.SETTINGS }
+                            )
+                            Screen.TIMETABLE -> TimetableScreen(
                                 repository = repository,
                                 viewModel = attendanceViewModel,
                                 scheduleViewModel = scheduleViewModel,
@@ -368,7 +379,7 @@ fun MainShell(repository: StudentRepository) {
                                 viewModel = attendanceViewModel,
                                 onNavigateToToday = { date ->
                                     attendanceViewModel.selectDate(date)
-                                    currentScreen = Screen.TODAY
+                                    currentScreen = Screen.ATTENDANCE
                                 }
                             )
                             Screen.SUBJECTS -> SubjectsScreen(
@@ -381,7 +392,16 @@ fun MainShell(repository: StudentRepository) {
                                 viewModel = settingsViewModel,
                                 attendanceViewModel = attendanceViewModel
                             )
-                            Screen.HOME -> HomeScreen(repository, onNavigate = { s -> currentScreen = s })
+                            Screen.HOME -> TodayScreen(
+                                repository = repository,
+                                viewModel = attendanceViewModel,
+                                onNavigateToAttendance = { currentScreen = Screen.ATTENDANCE },
+                                onNavigateToSettings = { currentScreen = Screen.SETTINGS },
+                                onStartStudySession = { subjectId, topic, durationMins ->
+                                    studyViewModel.startTimer(subjectId, topic, durationMins)
+                                    currentScreen = Screen.STUDY
+                                }
+                            )
                             Screen.MY_DAY -> MyDayScreen(repository)
                             Screen.STUDY -> StudyScreen(
                                 repository = repository,

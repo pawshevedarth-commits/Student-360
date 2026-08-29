@@ -2,7 +2,8 @@ package com.student360.app.ui
 
 enum class Screen(val title: String) {
     TODAY("Today"),
-    ATTENDANCE("Timetable"),
+    ATTENDANCE("Attendance"),
+    TIMETABLE("Timetable"),
     CALENDAR("Calendar"),
     SUBJECTS("Subjects"),
     SETTINGS("Settings"),

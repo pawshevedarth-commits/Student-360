@@ -734,3 +734,17 @@ fun AttendanceScreen(
         )
     }
 }
+
+/**
+ * TimetableScreen alias for AttendanceScreen (Weekly Timetable)
+ */
+@Composable
+fun TimetableScreen(
+    repository: StudentRepository,
+    viewModel: AttendanceViewModel,
+    scheduleViewModel: ScheduleViewModel,
+    onNavigateToSettings: () -> Unit = {}
+) {
+    AttendanceScreen(repository, viewModel, scheduleViewModel, onNavigateToSettings)
+}
+
