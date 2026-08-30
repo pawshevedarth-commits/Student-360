@@ -661,9 +661,10 @@ fun CleanExamCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "💡 Recommended: $recommendedDailyStudy",
+                            text = "💡 $recommendedDailyStudy prep",
                             style = MaterialTheme.typography.labelSmall,
-                            color = colors.textSecondary
+                            color = colors.textSecondary,
+                            maxLines = 1
                         )
 
                         TextButton(
@@ -676,7 +677,8 @@ fun CleanExamCard(
                                 "Start Session",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = colors.accent
+                                color = colors.accent,
+                                maxLines = 1
                             )
                         }
                     }
