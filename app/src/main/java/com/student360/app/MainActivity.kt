@@ -343,7 +343,11 @@ fun MainShell(repository: StudentRepository) {
                         subject = activeDetailSubject!!,
                         repository = repository,
                         viewModel = attendanceViewModel,
-                        onBack = { activeDetailSubject = null }
+                        onBack = { activeDetailSubject = null },
+                        onNavigateToExams = {
+                            activeDetailSubject = null
+                            currentScreen = Screen.EXAMS
+                        }
                     )
                 } else {
                     Crossfade(targetState = currentScreen, label = "screen_crossfade") { screen ->
@@ -395,7 +399,13 @@ fun MainShell(repository: StudentRepository) {
                                     currentScreen = Screen.STUDY
                                 }
                             )
-                            Screen.EXAMS -> ExamsScreen(repository)
+                            Screen.EXAMS -> ExamsScreen(
+                                repository = repository,
+                                onNavigateToStudy = { subjectId, topic, durationMins ->
+                                    studyViewModel.startTimer(subjectId, topic, durationMins)
+                                    currentScreen = Screen.STUDY
+                                }
+                            )
                             Screen.PROGRESS -> ProgressScreen(repository)
                             Screen.ALERTS -> AlertsScreen(repository)
                         }

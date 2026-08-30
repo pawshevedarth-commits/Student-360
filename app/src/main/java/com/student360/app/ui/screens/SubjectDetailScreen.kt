@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.student360.app.data.local.entity.*
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.data.repository.SubjectStats
+import com.student360.app.service.ExamEngine
 import com.student360.app.ui.components.StudentCard
 import com.student360.app.ui.theme.*
 import java.text.SimpleDateFormat
@@ -41,7 +42,8 @@ fun SubjectDetailScreen(
     subject: Subject,
     repository: StudentRepository,
     viewModel: AttendanceViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToExams: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val colors = LocalAppColors.current
@@ -484,15 +486,34 @@ fun SubjectDetailScreen(
                             }
                         }
                         if (subjectExams.isNotEmpty()) {
-                            subjectExams.take(2).forEach { ex ->
-                                val dateStr = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(ex.date))
+                            subjectExams.take(3).forEach { ex ->
+                                val dateStr = SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(Date(ex.date))
+                                val daysLeft = ExamEngine.getDaysRemaining(ex.date)
+                                val countdownText = ExamEngine.getCountdownText(daysLeft)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("${ex.examType.name} Test", style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
-                                    Text(dateStr, style = MaterialTheme.typography.labelSmall, color = colors.warning, fontWeight = FontWeight.Bold)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            ex.examType.displayName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.textPrimary
+                                        )
+                                        Text(
+                                            "$dateStr • $countdownText",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (daysLeft in 0..3) colors.danger else colors.textSecondary
+                                        )
+                                    }
+                                    TextButton(
+                                        onClick = onNavigateToExams,
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("View Exam", style = MaterialTheme.typography.labelSmall, color = colors.accent, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }

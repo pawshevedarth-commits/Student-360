@@ -27,6 +27,15 @@ object ExamEngine {
         return (diff / (24 * 60 * 60 * 1000)).toInt()
     }
 
+    fun getCountdownText(daysRemaining: Int): String {
+        return when {
+            daysRemaining < 0 -> "Exam passed"
+            daysRemaining == 0 -> "Today"
+            daysRemaining == 1 -> "Tomorrow"
+            else -> "$daysRemaining days remaining"
+        }
+    }
+
     fun getUrgencyText(daysRemaining: Int): String {
         return when {
             daysRemaining < 0 -> "Past Exam"

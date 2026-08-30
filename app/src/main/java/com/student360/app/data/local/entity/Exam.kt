@@ -5,13 +5,17 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class ExamType {
-    MIDTERM,
-    END_SEM,
-    PRACTICAL,
-    VIVA,
-    SUPPLEMENTARY,
-    OTHER
+enum class ExamType(val displayName: String) {
+    MIDTERM("Midterm"),
+    INTERNAL("Internal"),
+    UNIT_TEST("Unit Test"),
+    PRACTICAL("Practical"),
+    ASSIGNMENT_TEST("Assignment / Test"),
+    FINAL("Final"),
+    END_SEM("End Sem"),
+    VIVA("Viva"),
+    SUPPLEMENTARY("Supplementary"),
+    OTHER("Other")
 }
 
 @Entity(

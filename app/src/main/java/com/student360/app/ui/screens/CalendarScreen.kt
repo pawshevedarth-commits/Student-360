@@ -455,7 +455,7 @@ fun CalendarScreen(
                                 Text("🚨", fontSize = 18.sp)
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
-                                        text = "${sub?.name ?: "Subject"} (${exam.examType.name})",
+                                        text = "${sub?.name ?: "Subject"} ${exam.examType.displayName}",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = colors.textPrimary

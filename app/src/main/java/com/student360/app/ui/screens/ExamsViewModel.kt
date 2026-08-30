@@ -3,11 +3,7 @@ package com.student360.app.ui.screens
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.student360.app.data.local.entity.Exam
-import com.student360.app.data.local.entity.ExamTopic
-import com.student360.app.data.local.entity.ExamType
-import com.student360.app.data.local.entity.Subject
-import com.student360.app.data.local.entity.TopicStatus
+import com.student360.app.data.local.entity.*
 import com.student360.app.data.repository.StudentRepository
 import com.student360.app.service.ExamEngine
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,7 +73,35 @@ class ExamsViewModel(application: Application) : AndroidViewModel(application) {
             
             initialTopics.forEach { topic ->
                 if (topic.isNotBlank()) {
-                    repository.insertExamTopic(ExamTopic(examId = examId, topicName = topic))
+                    repository.insertExamTopic(ExamTopic(examId = examId, topicName = topic.trim()))
+                }
+            }
+
+            // Create notification alert for the scheduled exam
+            val sub = repository.getSubjectById(subjectId)
+            val days = ExamEngine.getDaysRemaining(date)
+            repository.insertAlert(
+                Alert(
+                    type = AlertType.EXAM,
+                    title = "${sub?.name ?: "Exam"} ${examType.displayName}",
+                    message = "${sub?.name ?: "Subject"} ${examType.displayName} scheduled in $days days${if (venue.isNotBlank()) " at $venue" else ""}.",
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+
+            loadExamsData()
+        }
+    }
+
+    fun updateExam(
+        exam: Exam,
+        newTopics: List<String> = emptyList()
+    ) {
+        viewModelScope.launch {
+            repository.updateExam(exam)
+            newTopics.forEach { topic ->
+                if (topic.isNotBlank()) {
+                    repository.insertExamTopic(ExamTopic(examId = exam.id, topicName = topic.trim()))
                 }
             }
             loadExamsData()
@@ -86,14 +110,28 @@ class ExamsViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addTopicToExam(examId: Int, topicName: String) {
         viewModelScope.launch {
-            repository.insertExamTopic(ExamTopic(examId = examId, topicName = topicName))
-            loadExamsData()
+            if (topicName.isNotBlank()) {
+                repository.insertExamTopic(ExamTopic(examId = examId, topicName = topicName.trim()))
+                loadExamsData()
+            }
         }
+    }
+
+    fun toggleTopicStatus(topic: ExamTopic) {
+        val nextStatus = if (topic.status == TopicStatus.COMPLETED) TopicStatus.NOT_STARTED else TopicStatus.COMPLETED
+        updateTopicStatus(topic, nextStatus)
     }
 
     fun updateTopicStatus(topic: ExamTopic, newStatus: TopicStatus) {
         viewModelScope.launch {
             repository.updateExamTopic(topic.copy(status = newStatus))
+            loadExamsData()
+        }
+    }
+
+    fun deleteTopic(topic: ExamTopic) {
+        viewModelScope.launch {
+            repository.deleteExamTopic(topic)
             loadExamsData()
         }
     }
@@ -111,4 +149,7 @@ data class ExamWithPrep(
     val topics: List<ExamTopic>,
     val prepPercentage: Double,
     val daysRemaining: Int
-)
+) {
+    val completedTopicsCount: Int get() = topics.count { it.status == TopicStatus.COMPLETED }
+    val totalTopicsCount: Int get() = topics.size
+}
