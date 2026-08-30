@@ -377,7 +377,7 @@ fun SettingsScreen(
                     SettingsItemRow(
                         icon = Icons.Default.Info,
                         title = "About Student360",
-                        subtitle = "Version 1.0.0 • 100% Offline-First Academic Suite",
+                        subtitle = "Version 1.1.0 • 100% Offline-First Academic Suite",
                         textColor = colors.textPrimary,
                         subTextColor = colors.textSecondary,
                         iconColor = colors.textSecondary,
@@ -797,7 +797,7 @@ fun SettingsScreen(
             title = { Text("Student360", color = colors.textPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Version 1.0.0 (Release Build)", color = colors.textPrimary, fontWeight = FontWeight.Medium)
+                    Text("Version 1.1.0 (Release Build)", color = colors.textPrimary, fontWeight = FontWeight.Medium)
                     Text("100% Offline-First Student Productivity & Attendance System.", color = colors.textSecondary, style = MaterialTheme.typography.bodySmall)
                     Text("Designed with privacy, speed, and clean academic workflows in mind.", color = colors.textSecondary, style = MaterialTheme.typography.bodySmall)
                 }
