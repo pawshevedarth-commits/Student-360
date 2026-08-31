@@ -44,7 +44,6 @@ fun AttendanceScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val todayLectures by viewModel.todayLectures.collectAsState()
     val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
-    val allSubjectsWithStats by viewModel.allSubjectsWithStats.collectAsState()
     val overallStats by viewModel.overallStats.collectAsState()
     val targetPercentage by viewModel.targetPercentage.collectAsState()
 
