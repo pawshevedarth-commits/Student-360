@@ -535,19 +535,37 @@ fun AddLectureDialog(
     var notifyMinutes by remember { mutableStateOf<Int?>(10) }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+
     val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     val selectedSubject = subjects.find { it.id == selectedSubjectId } ?: subjects.firstOrNull()
 
     fun advanceTimeToNextSlot(currentEnd: String): Pair<String, String> {
-        return try {
-            val parts = currentEnd.split(":")
-            val endHour = parts[0].toInt()
-            val nextStart = String.format(Locale.US, "%02d:00", endHour)
-            val nextEnd = String.format(Locale.US, "%02d:00", (endHour + 1).coerceAtMost(23))
-            nextStart to nextEnd
-        } catch (e: Exception) {
-            "09:00" to "10:00"
-        }
+        return advanceTimeSlot(currentEnd)
+    }
+
+    if (showStartTimePicker) {
+        StudentTimePickerModal(
+            initialTime24h = startTime,
+            title = "Select Start Time",
+            onTimeSelected = { newStart ->
+                startTime = newStart
+                endTime = calculateNextHour(newStart)
+            },
+            onDismiss = { showStartTimePicker = false }
+        )
+    }
+
+    if (showEndTimePicker) {
+        StudentTimePickerModal(
+            initialTime24h = endTime,
+            title = "Select End Time",
+            onTimeSelected = { newEnd ->
+                endTime = newEnd
+            },
+            onDismiss = { showEndTimePicker = false }
+        )
     }
 
     AlertDialog(
@@ -620,31 +638,20 @@ fun AddLectureDialog(
                 }
 
                 // Time Inputs
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = startTime,
-                        onValueChange = { startTime = it },
-                        label = { Text("Start Time") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StudentTimeField(
+                        label = "Start",
+                        time24h = startTime,
+                        onClick = { showStartTimePicker = true },
                         modifier = Modifier.weight(1f)
                     )
-                    OutlinedTextField(
-                        value = endTime,
-                        onValueChange = { endTime = it },
-                        label = { Text("End Time") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
+                    StudentTimeField(
+                        label = "End",
+                        time24h = endTime,
+                        onClick = { showEndTimePicker = true },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -734,8 +741,34 @@ fun EditLectureDialog(
     var faculty by remember { mutableStateOf(entry.facultyOverride ?: "") }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+
     val days = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     val selectedSubject = subjects.find { it.id == selectedSubjectId } ?: subjects.firstOrNull()
+
+    if (showStartTimePicker) {
+        StudentTimePickerModal(
+            initialTime24h = startTime,
+            title = "Select Start Time",
+            onTimeSelected = { newStart ->
+                startTime = newStart
+                endTime = calculateNextHour(newStart)
+            },
+            onDismiss = { showStartTimePicker = false }
+        )
+    }
+
+    if (showEndTimePicker) {
+        StudentTimePickerModal(
+            initialTime24h = endTime,
+            title = "Select End Time",
+            onTimeSelected = { newEnd ->
+                endTime = newEnd
+            },
+            onDismiss = { showEndTimePicker = false }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -807,31 +840,20 @@ fun EditLectureDialog(
                 }
 
                 // Time Inputs
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = startTime,
-                        onValueChange = { startTime = it },
-                        label = { Text("Start Time") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StudentTimeField(
+                        label = "Start",
+                        time24h = startTime,
+                        onClick = { showStartTimePicker = true },
                         modifier = Modifier.weight(1f)
                     )
-                    OutlinedTextField(
-                        value = endTime,
-                        onValueChange = { endTime = it },
-                        label = { Text("End Time") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
+                    StudentTimeField(
+                        label = "End",
+                        time24h = endTime,
+                        onClick = { showEndTimePicker = true },
                         modifier = Modifier.weight(1f)
                     )
                 }

@@ -952,7 +952,33 @@ fun AddExtraLectureDialog(
     var faculty by remember { mutableStateOf("") }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+
     val selectedSubject = subjects.find { it.id == selectedSubjectId } ?: subjects.first()
+
+    if (showStartTimePicker) {
+        StudentTimePickerModal(
+            initialTime24h = startTime,
+            title = "Select Start Time",
+            onTimeSelected = { newStart ->
+                startTime = newStart
+                endTime = calculateNextHour(newStart)
+            },
+            onDismiss = { showStartTimePicker = false }
+        )
+    }
+
+    if (showEndTimePicker) {
+        StudentTimePickerModal(
+            initialTime24h = endTime,
+            title = "Select End Time",
+            onTimeSelected = { newEnd ->
+                endTime = newEnd
+            },
+            onDismiss = { showEndTimePicker = false }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -996,31 +1022,21 @@ fun AddExtraLectureDialog(
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = startTime,
-                        onValueChange = { startTime = it },
-                        label = { Text("Start Time") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
+                // Time Selection Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StudentTimeField(
+                        label = "Start",
+                        time24h = startTime,
+                        onClick = { showStartTimePicker = true },
                         modifier = Modifier.weight(1f)
                     )
-                    OutlinedTextField(
-                        value = endTime,
-                        onValueChange = { endTime = it },
-                        label = { Text("End Time") },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
+                    StudentTimeField(
+                        label = "End",
+                        time24h = endTime,
+                        onClick = { showEndTimePicker = true },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1079,7 +1095,18 @@ fun AddGoalDialog(
     val colors = LocalAppColors.current
     var goalTitle by remember { mutableStateOf("") }
     var goalTarget by remember { mutableStateOf("10") }
-    var goalDueDays by remember { mutableStateOf("14") }
+    var deadlineMillis by remember {
+        mutableStateOf(System.currentTimeMillis() + 14 * 24 * 3600 * 1000L)
+    }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        StudentDatePickerModal(
+            initialDateMillis = deadlineMillis,
+            onDateSelected = { deadlineMillis = it },
+            onDismiss = { showDatePicker = false }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1122,19 +1149,18 @@ fun AddGoalDialog(
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = goalDueDays,
-                    onValueChange = { goalDueDays = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("Due in (Days from now)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colors.accent,
-                        unfocusedBorderColor = colors.border,
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+
+                // Date Picker Field & Shortcuts
+                StudentDateField(
+                    label = "Target Deadline",
+                    dateMillis = deadlineMillis,
+                    onClick = { showDatePicker = true }
+                )
+
+                SmartDateShortcutsRow(
+                    selectedDateMillis = deadlineMillis,
+                    onShortcutSelected = { deadlineMillis = it },
+                    includeToday = false
                 )
             }
         },
@@ -1142,7 +1168,7 @@ fun AddGoalDialog(
             Button(
                 onClick = {
                     val target = goalTarget.toDoubleOrNull() ?: 10.0
-                    val days = goalDueDays.toIntOrNull() ?: 14
+                    val days = ((deadlineMillis - System.currentTimeMillis()) / (24 * 3600 * 1000L)).coerceAtLeast(1).toInt()
                     onSave(goalTitle, target, days)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent),

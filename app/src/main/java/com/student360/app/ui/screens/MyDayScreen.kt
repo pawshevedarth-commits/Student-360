@@ -701,11 +701,20 @@ fun AddAssignmentDialog(
     var name by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var subjectIndex by remember { mutableStateOf(0) }
-    var dueDaysString by remember { mutableStateOf("3") }
+    var dueDateMillis by remember { mutableStateOf(System.currentTimeMillis() + 3 * 24 * 3600 * 1000L) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var priority by remember { mutableStateOf(AssignmentPriority.MEDIUM) }
 
     var subDropdownExpanded by remember { mutableStateOf(false) }
     var prioDropdownExpanded by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        StudentDatePickerModal(
+            initialDateMillis = dueDateMillis,
+            onDateSelected = { dueDateMillis = it },
+            onDismiss = { showDatePicker = false }
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -826,25 +835,25 @@ fun AddAssignmentDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = dueDaysString,
-                    onValueChange = { dueDaysString = it },
-                    label = { Text("Due in (Days from now)") },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryPurple,
-                        unfocusedBorderColor = BorderDark,
-                        focusedTextColor = PrimaryText,
-                        unfocusedTextColor = PrimaryText
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+                // Due Date Field & Shortcuts
+                StudentDateField(
+                    label = "Due Date",
+                    dateMillis = dueDateMillis,
+                    onClick = { showDatePicker = true }
+                )
+
+                SmartDateShortcutsRow(
+                    selectedDateMillis = dueDateMillis,
+                    onShortcutSelected = { dueDateMillis = it },
+                    includeToday = true
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(name, subjects[subjectIndex].id, desc, dueDaysString.toIntOrNull() ?: 3, priority)
+                    val days = ((dueDateMillis - System.currentTimeMillis()) / (24 * 3600 * 1000L)).coerceAtLeast(1).toInt()
+                    onSave(name, subjects[subjectIndex].id, desc, days, priority)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple),
                 shape = RoundedCornerShape(10.dp),
