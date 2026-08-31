@@ -3,7 +3,6 @@
 package com.student360.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -11,7 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -147,7 +146,6 @@ fun StudentDatePickerModal(
                 todayDateBorderColor = colors.accent,
                 todayContentColor = colors.accent,
                 weekdayContentColor = colors.textSecondary,
-                navigationEventContentColor = colors.textPrimary,
                 yearContentColor = colors.textPrimary,
                 currentYearContentColor = colors.accent,
                 selectedYearContainerColor = colors.accent,
@@ -304,7 +302,7 @@ fun StudentTimeField(
     time24h: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    icon: ImageVector = Icons.Default.Schedule,
+    icon: ImageVector = Icons.Default.Notifications,
     isOptional: Boolean = false
 ) {
     val colors = LocalAppColors.current
@@ -366,7 +364,6 @@ fun SmartDateShortcutsRow(
     includeToday: Boolean = true
 ) {
     val colors = LocalAppColors.current
-    val nowCal = Calendar.getInstance()
 
     val shortcuts = remember(includeToday) {
         val list = mutableListOf<Pair<String, Long>>()

@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.student360.app.data.local.entity.Subject
 import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.SubjectStats
-import com.student360.app.ui.components.ElevatedStudentCard
+import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
 import java.util.Locale
 import kotlin.math.ceil

@@ -910,80 +910,25 @@ fun AddOrEditExamDialog(
                         }
                     }
 
-                    // 3. Date & Time Row (Native pickers on tap)
+                    // 3. Date & Time Row (Unified pickers on tap)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Date Picker Field
-                        Surface(
-                            onClick = {
-                                android.util.Log.d("STUDENT360_DEBUG", "Date Surface clicked!")
-                                showDatePickerModal = true
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color.Transparent,
-                            modifier = Modifier.weight(1.2f)
-                        ) {
-                            OutlinedTextField(
-                                value = friendlyDateText,
-                                onValueChange = {},
-                                enabled = false,
-                                label = { Text("Date *") },
-                                trailingIcon = {
-                                    IconButton(onClick = {
-                                        android.util.Log.d("STUDENT360_DEBUG", "Date Icon clicked!")
-                                        showDatePickerModal = true
-                                    }) {
-                                        Icon(
-                                            Icons.Default.DateRange,
-                                            contentDescription = "Pick Date",
-                                            tint = colors.accent
-                                        )
-                                    }
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledBorderColor = colors.border,
-                                    disabledTextColor = colors.textPrimary,
-                                    disabledLabelColor = colors.textSecondary,
-                                    disabledTrailingIconColor = colors.accent
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        StudentDateField(
+                            label = "Exam Date *",
+                            dateMillis = selectedDateMillis,
+                            onClick = { showDatePickerModal = true },
+                            modifier = Modifier.weight(1.1f)
+                        )
 
-                        // Time Picker Field (Optional)
-                        Surface(
+                        StudentTimeField(
+                            label = "Exam Time",
+                            time24h = timeString,
                             onClick = { showTimePickerModal = true },
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color.Transparent,
+                            isOptional = true,
                             modifier = Modifier.weight(0.9f)
-                        ) {
-                            OutlinedTextField(
-                                value = timeString.ifBlank { "Anytime" },
-                                onValueChange = {},
-                                enabled = false,
-                                label = { Text("Time") },
-                                trailingIcon = {
-                                    IconButton(onClick = { showTimePickerModal = true }) {
-                                        Icon(
-                                            Icons.Default.Notifications,
-                                            contentDescription = "Pick Time",
-                                            tint = colors.accent
-                                        )
-                                    }
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledBorderColor = colors.border,
-                                    disabledTextColor = colors.textPrimary,
-                                    disabledLabelColor = colors.textSecondary,
-                                    disabledTrailingIconColor = colors.accent
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                        )
                     }
 
                     // 4. Venue Field
@@ -1190,95 +1135,19 @@ fun AddOrEditExamDialog(
             }
 
     if (showDatePickerModal) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = if (selectedDateMillis > 0) selectedDateMillis else System.currentTimeMillis()
+        StudentDatePickerModal(
+            initialDateMillis = if (selectedDateMillis > 0) selectedDateMillis else System.currentTimeMillis(),
+            onDateSelected = { selectedDateMillis = it },
+            onDismiss = { showDatePickerModal = false }
         )
-        DatePickerDialog(
-            onDismissRequest = { showDatePickerModal = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let {
-                            selectedDateMillis = it
-                        }
-                        showDatePickerModal = false
-                    }
-                ) {
-                    Text("OK", color = colors.accent, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePickerModal = false }) {
-                    Text("Cancel", color = colors.textSecondary)
-                }
-            },
-            colors = DatePickerDefaults.colors(
-                containerColor = colors.card
-            )
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    titleContentColor = colors.textPrimary,
-                    headlineContentColor = colors.textPrimary,
-                    selectedDayContainerColor = colors.accent,
-                    selectedDayContentColor = Color.White,
-                    todayDateBorderColor = colors.accent,
-                    todayContentColor = colors.accent
-                )
-            )
-        }
     }
 
     if (showTimePickerModal) {
-        val cal = Calendar.getInstance()
-        var hour = cal.get(Calendar.HOUR_OF_DAY)
-        var minute = cal.get(Calendar.MINUTE)
-        if (timeString.contains(":")) {
-            val parts = timeString.split(":")
-            hour = parts.getOrNull(0)?.toIntOrNull() ?: hour
-            minute = parts.getOrNull(1)?.filter { it.isDigit() }?.toIntOrNull() ?: minute
-        }
-        val timePickerState = rememberTimePickerState(
-            initialHour = hour,
-            initialMinute = minute,
-            is24Hour = false
-        )
-        AlertDialog(
-            onDismissRequest = { showTimePickerModal = false },
-            containerColor = colors.card,
-            title = { Text("Select Time", color = colors.textPrimary, fontWeight = FontWeight.Bold) },
-            text = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    TimePicker(
-                        state = timePickerState,
-                        colors = TimePickerDefaults.colors(
-                            clockDialColor = colors.bg,
-                            selectorColor = colors.accent,
-                            periodSelectorBorderColor = colors.border,
-                            periodSelectorSelectedContainerColor = colors.accent.copy(alpha = 0.2f),
-                            periodSelectorSelectedContentColor = colors.accent,
-                            timeSelectorSelectedContainerColor = colors.accent.copy(alpha = 0.2f),
-                            timeSelectorSelectedContentColor = colors.accent
-                        )
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        timeString = String.format(Locale.getDefault(), "%02d:%02d", timePickerState.hour, timePickerState.minute)
-                        showTimePickerModal = false
-                    }
-                ) {
-                    Text("OK", color = colors.accent, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTimePickerModal = false }) {
-                    Text("Cancel", color = colors.textSecondary)
-                }
-            }
+        StudentTimePickerModal(
+            initialTime24h = if (timeString.isNotBlank()) timeString else "10:00",
+            title = "Select Exam Time",
+            onTimeSelected = { timeString = it },
+            onDismiss = { showTimePickerModal = false }
         )
     }
     }
