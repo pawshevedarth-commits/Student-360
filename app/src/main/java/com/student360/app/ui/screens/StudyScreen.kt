@@ -539,7 +539,18 @@ fun StudyScreen(
     if (showAddGoalDialog) {
         var goalTitle by remember { mutableStateOf("") }
         var goalTarget by remember { mutableStateOf("10") }
-        var goalDueDays by remember { mutableStateOf("14") }
+        var deadlineMillis by remember {
+            mutableStateOf(System.currentTimeMillis() + 14 * 24 * 3600 * 1000L)
+        }
+        var showDatePicker by remember { mutableStateOf(false) }
+
+        if (showDatePicker) {
+            StudentDatePickerModal(
+                initialDateMillis = deadlineMillis,
+                onDateSelected = { deadlineMillis = it },
+                onDismiss = { showDatePicker = false }
+            )
+        }
 
         AlertDialog(
             onDismissRequest = { showAddGoalDialog = false },
@@ -582,19 +593,18 @@ fun StudyScreen(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
-                    OutlinedTextField(
-                        value = goalDueDays,
-                        onValueChange = { goalDueDays = it },
-                        label = { Text("Time limit (Days)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.accent,
-                            unfocusedBorderColor = colors.border,
-                            focusedTextColor = colors.textPrimary,
-                            unfocusedTextColor = colors.textPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+
+                    // Target Deadline Date Field & Shortcuts
+                    StudentDateField(
+                        label = "Target Deadline",
+                        dateMillis = deadlineMillis,
+                        onClick = { showDatePicker = true }
+                    )
+
+                    SmartDateShortcutsRow(
+                        selectedDateMillis = deadlineMillis,
+                        onShortcutSelected = { deadlineMillis = it },
+                        includeToday = false
                     )
                 }
             },
@@ -602,11 +612,12 @@ fun StudyScreen(
                 Button(
                     onClick = {
                         if (goalTitle.isNotBlank()) {
+                            val days = ((deadlineMillis - System.currentTimeMillis()) / (24 * 3600 * 1000L)).coerceAtLeast(1).toInt()
                             viewModel.addGoal(
                                 goalTitle,
                                 goalTarget.toDoubleOrNull() ?: 10.0,
                                 0.0,
-                                goalDueDays.toIntOrNull() ?: 14
+                                days
                             )
                             showAddGoalDialog = false
                         }
