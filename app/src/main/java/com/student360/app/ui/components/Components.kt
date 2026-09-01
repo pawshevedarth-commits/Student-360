@@ -1,5 +1,7 @@
 package com.student360.app.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -422,13 +424,29 @@ fun QuickAttendanceRoundButton(
     size: Dp = 28.dp
 ) {
     val colors = LocalAppColors.current
+    val animatedBg by animateColorAsState(
+        targetValue = if (isSelected) activeColor else colors.elevatedCard,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "btnBg"
+    )
+    val animatedBorder by animateColorAsState(
+        targetValue = if (isSelected) activeColor else colors.border,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "btnBorder"
+    )
+    val animatedTextColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else colors.textSecondary.copy(alpha = 0.8f),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "btnText"
+    )
+
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(if (isSelected) activeColor else colors.elevatedCard)
+            .background(animatedBg)
             .border(
-                BorderStroke(1.dp, if (isSelected) activeColor else colors.border),
+                BorderStroke(1.dp, animatedBorder),
                 CircleShape
             )
             .clickable { onClick() },
@@ -438,7 +456,7 @@ fun QuickAttendanceRoundButton(
             text = symbol,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            color = if (isSelected) Color.White else colors.textSecondary.copy(alpha = 0.8f),
+            color = animatedTextColor,
             fontSize = if (symbol == "—") 14.sp else 12.sp,
             textAlign = TextAlign.Center
         )
@@ -460,17 +478,29 @@ private fun DayStatusActionItem(
     iconContent: @Composable (Color) -> Unit
 ) {
     val colors = LocalAppColors.current
-    val currentIconColor = if (isSelected) activeColor else colors.textSecondary.copy(alpha = 0.8f)
-    val buttonBgColor = if (isSelected) {
+    val targetIconColor = if (isSelected) activeColor else colors.textSecondary.copy(alpha = 0.8f)
+    val targetButtonBg = if (isSelected) {
         activeColor.copy(alpha = if (colors.isDark) 0.20f else 0.12f)
     } else {
         if (colors.isDark) colors.elevatedCard.copy(alpha = 0.5f) else colors.surface
     }
-    val buttonBorderColor = if (isSelected) {
-        activeColor
-    } else {
-        colors.border
-    }
+    val targetBorder = if (isSelected) activeColor else colors.border
+
+    val animatedIconColor by animateColorAsState(
+        targetValue = targetIconColor,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "iconColor"
+    )
+    val animatedBgColor by animateColorAsState(
+        targetValue = targetButtonBg,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "bgColor"
+    )
+    val animatedBorderColor by animateColorAsState(
+        targetValue = targetBorder,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "borderColor"
+    )
 
     Column(
         modifier = modifier,
@@ -479,8 +509,8 @@ private fun DayStatusActionItem(
     ) {
         Surface(
             shape = CircleShape,
-            color = buttonBgColor,
-            border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, buttonBorderColor),
+            color = animatedBgColor,
+            border = BorderStroke(if (isSelected) 1.5.dp else 1.dp, animatedBorderColor),
             modifier = Modifier
                 .size(buttonSize)
                 .clip(CircleShape)
@@ -490,7 +520,7 @@ private fun DayStatusActionItem(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                iconContent(currentIconColor)
+                iconContent(animatedIconColor)
             }
         }
 
@@ -498,7 +528,7 @@ private fun DayStatusActionItem(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) activeColor else colors.textSecondary,
+            color = animatedIconColor,
             fontSize = 11.sp,
             textAlign = TextAlign.Center
         )
@@ -836,7 +866,7 @@ fun StudentProgressBar(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
         label = "progress"
     )
 
