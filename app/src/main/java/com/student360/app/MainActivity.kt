@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -350,7 +352,11 @@ fun MainShell(repository: StudentRepository) {
                         }
                     )
                 } else {
-                    Crossfade(targetState = currentScreen, label = "screen_crossfade") { screen ->
+                    Crossfade(
+                        targetState = currentScreen,
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                        label = "screen_crossfade"
+                    ) { screen ->
                         when (screen) {
                             Screen.TODAY -> TodayScreen(
                                 repository = repository,
