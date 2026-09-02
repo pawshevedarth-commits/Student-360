@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.student360.app.data.local.entity.TimetableEntry
 import com.student360.app.data.repository.StudentRepository
-import com.student360.app.ui.components.StudentCard
+import com.student360.app.ui.components.*
 import com.student360.app.ui.theme.*
 import kotlinx.coroutines.launch
 import java.util.*
@@ -366,19 +366,25 @@ fun TimetableScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                             contentPadding = PaddingValues(bottom = 24.dp)
                         ) {
                             itemsIndexed(currentDayList, key = { _, entry -> entry.id }) { _, entry ->
                                 val isDragging = draggingEntryId == entry.id
-                                val sub = allSubjectsWithStats.find { it.first.id == entry.subjectId }?.first
+                                val subPair = allSubjectsWithStats.find { it.first.id == entry.subjectId }
+                                val sub = subPair?.first
+                                val stats = subPair?.second
                                 val subjectTitle = sub?.name ?: "Subject"
+                                val subjectCode = sub?.code?.ifBlank { null }
+                                val faculty = entry.facultyOverride?.ifBlank { null } ?: sub?.faculty?.ifBlank { null }
+                                val displayStartTime = formatDisplayTime(entry.startTime)
+                                val displayEndTime = formatDisplayTime(entry.endTime)
 
                                 Surface(
-                                    shape = RoundedCornerShape(14.dp),
+                                    shape = RoundedCornerShape(16.dp),
                                     color = if (isDragging) colors.activePill else colors.card,
                                     border = BorderStroke(
-                                        if (isDragging) 2.dp else 1.dp,
+                                        if (isDragging) 1.5.dp else 1.dp,
                                         if (isDragging) colors.accent else colors.border
                                     ),
                                     modifier = Modifier
@@ -387,8 +393,8 @@ fun TimetableScreen(
                                         .graphicsLayer {
                                             translationY = if (isDragging) dragOffsetY else 0f
                                         }
-                                        .shadow(if (isDragging) 8.dp else 0.dp, RoundedCornerShape(14.dp))
-                                        .clip(RoundedCornerShape(14.dp))
+                                        .shadow(if (isDragging) 10.dp else 0.dp, RoundedCornerShape(16.dp))
+                                        .clip(RoundedCornerShape(16.dp))
                                         .combinedClickable(
                                             onClick = { selectedEntryForEdit = entry },
                                             onLongClick = { entryToDelete = entry }
@@ -397,21 +403,22 @@ fun TimetableScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 14.dp, vertical = 14.dp),
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            // Three-line Hamburger Drag Handle
+                                            // Drag Handle
                                             Box(
                                                 modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(if (isDragging) colors.accent.copy(alpha = 0.15f) else Color.Transparent)
+                                                    .size(38.dp)
+                                                    .clip(RoundedCornerShape(10.dp))
+                                                    .background(if (isDragging) colors.accent.copy(alpha = 0.18f) else colors.elevatedCard)
+                                                    .border(BorderStroke(1.dp, if (isDragging) colors.accent else colors.border), RoundedCornerShape(10.dp))
                                                     .pointerInput(entry.id, currentDayList.size) {
                                                         detectDragGestures(
                                                             onDragStart = {
@@ -463,25 +470,162 @@ fun TimetableScreen(
                                                     Icons.Default.Menu,
                                                     contentDescription = "Drag to reorder",
                                                     tint = if (isDragging) colors.accent else colors.textSecondary,
-                                                    modifier = Modifier.size(20.dp)
+                                                    modifier = Modifier.size(18.dp)
                                                 )
                                             }
 
-                                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                                Text(
-                                                    text = subjectTitle,
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = colors.textPrimary,
-                                                    fontSize = 16.sp
-                                                )
-                                                Text(
-                                                    text = "⏰ ${entry.startTime} – ${entry.endTime}" + if (entry.room.isNotBlank()) " • Room ${entry.room}" else "",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = colors.textSecondary,
-                                                    fontSize = 11.sp
-                                                )
+                                            Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                                            ) {
+                                                // Title Row with Code / Percentage Badges
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                        modifier = Modifier.weight(1f, fill = false)
+                                                    ) {
+                                                        Text(
+                                                            text = subjectTitle,
+                                                            style = MaterialTheme.typography.titleMedium,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = colors.textPrimary,
+                                                            fontSize = 15.sp,
+                                                            maxLines = 1,
+                                                            overflow = TextOverflow.Ellipsis
+                                                        )
+                                                        if (!subjectCode.isNullOrBlank()) {
+                                                            Surface(
+                                                                shape = RoundedCornerShape(6.dp),
+                                                                color = colors.elevatedCard,
+                                                                border = BorderStroke(1.dp, colors.border)
+                                                            ) {
+                                                                Text(
+                                                                    text = subjectCode,
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    fontWeight = FontWeight.SemiBold,
+                                                                    color = colors.textSecondary,
+                                                                    fontSize = 10.sp,
+                                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Attendance percentage badge if available
+                                                    if (stats != null) {
+                                                        val pctColor = when {
+                                                            stats.percentage >= 75.0 -> colors.success
+                                                            stats.percentage >= 70.0 -> colors.warning
+                                                            else -> colors.danger
+                                                        }
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = pctColor.copy(alpha = 0.12f),
+                                                            border = BorderStroke(1.dp, pctColor.copy(alpha = 0.25f))
+                                                        ) {
+                                                            Text(
+                                                                text = "${String.format(Locale.US, "%.0f", stats.percentage)}%",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = pctColor,
+                                                                fontSize = 11.sp,
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+
+                                                // Badges Row: Time, Room, Faculty
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    // Time Badge
+                                                    Surface(
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = colors.accent.copy(alpha = 0.12f),
+                                                        border = BorderStroke(1.dp, colors.accent.copy(alpha = 0.22f))
+                                                    ) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "⏰ $displayStartTime – $displayEndTime",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                fontWeight = FontWeight.SemiBold,
+                                                                color = colors.accent,
+                                                                fontSize = 11.sp
+                                                            )
+                                                        }
+                                                    }
+
+                                                    // Room Badge
+                                                    if (entry.room.isNotBlank()) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = colors.elevatedCard,
+                                                            border = BorderStroke(1.dp, colors.border)
+                                                        ) {
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                            ) {
+                                                                Text(
+                                                                    text = "📍 ${entry.room}",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = colors.textSecondary,
+                                                                    fontSize = 11.sp
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Faculty Badge
+                                                    if (!faculty.isNullOrBlank()) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = colors.elevatedCard,
+                                                            border = BorderStroke(1.dp, colors.border)
+                                                        ) {
+                                                            Row(
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                            ) {
+                                                                Text(
+                                                                    text = "👤 $faculty",
+                                                                    style = MaterialTheme.typography.labelSmall,
+                                                                    color = colors.textSecondary,
+                                                                    fontSize = 11.sp,
+                                                                    maxLines = 1,
+                                                                    overflow = TextOverflow.Ellipsis
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
                                             }
+                                        }
+
+                                        // Action / Edit Icon
+                                        IconButton(
+                                            onClick = { selectedEntryForEdit = entry },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = "Edit class",
+                                                tint = colors.textSecondary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
                                         }
                                     }
                                 }
@@ -516,14 +660,18 @@ fun TimetableScreen(
                                             val sub = allSubjectsWithStats.find { it.first.id == entry.subjectId }?.first
                                             val subTitle = sub?.name ?: "Subject"
 
-                                            // Lecture cell: rounded rectangle with soft lavender background
+                                            // Lecture cell: rounded rectangle with theme-aware background
+                                            val cellBg = if (colors.isDark) colors.accent.copy(alpha = 0.22f) else Color(0xFFE8DEFF)
+                                            val cellBorder = if (colors.isDark) colors.accent.copy(alpha = 0.45f) else Color(0xFFD4C4FA)
+                                            val cellTextColor = if (colors.isDark) colors.textPrimary else Color(0xFF261D45)
+
                                             Box(
                                                 modifier = Modifier
                                                     .weight(1f)
                                                     .height(68.dp)
                                                     .clip(RoundedCornerShape(8.dp))
-                                                    .background(Color(0xFFE8DEFF))
-                                                    .border(BorderStroke(1.dp, Color(0xFFD4C4FA)), RoundedCornerShape(8.dp))
+                                                    .background(cellBg)
+                                                    .border(BorderStroke(1.dp, cellBorder), RoundedCornerShape(8.dp))
                                                     .clickable { if (isEditMode) selectedEntryForEdit = entry else selectedEntryForDetail = entry }
                                                     .padding(horizontal = 3.dp, vertical = 4.dp),
                                                 contentAlignment = Alignment.TopStart
@@ -532,7 +680,7 @@ fun TimetableScreen(
                                                     text = subTitle,
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF261D45),
+                                                    color = cellTextColor,
                                                     fontSize = 10.sp,
                                                     lineHeight = 11.sp,
                                                     maxLines = 3,
@@ -562,6 +710,7 @@ fun TimetableScreen(
                 }
             }
         }
+
 
         // Add Timetable Lecture Dialog (Save Class saves and stays open for continuous additions)
         if (showAddLectureDialog) {
