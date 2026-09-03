@@ -58,7 +58,7 @@
 
 Student360 adheres to modern Android architecture principles (**Clean Architecture + MVVM + UDF**):
 
-- **UI Layer**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with [Material 3](https://m3.material.io) theming, animations, and dynamic dark/light theme support.
+- **UI Layer**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with [Material 3](https://m3.material.io) theming, animations, unified date/time pickers, and dynamic dark/light theme support.
 - **State Management**: AndroidX `ViewModel`, Kotlin `StateFlow`, and `Coroutines`.
 - **Data Layer**: [Room Persistence Library](https://developer.android.com/training/data-storage/room) with TypeConverters, Reactive Flow queries, and SQLite caching.
 - **Background Tasks & Alerts**: Android `AlarmManager` and `NotificationManager` with notification channels.
