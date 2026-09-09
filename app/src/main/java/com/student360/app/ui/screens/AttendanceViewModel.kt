@@ -95,7 +95,15 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     private val _todayLectures = MutableStateFlow<List<LectureItem>>(emptyList())
     val todayLectures: StateFlow<List<LectureItem>> = _todayLectures.asStateFlow()
 
-    private val _currentMonth = MutableStateFlow<Calendar>(Calendar.getInstance())
+    private val _currentMonth = MutableStateFlow<Calendar>(
+        Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+    )
     val currentMonth: StateFlow<Calendar> = _currentMonth.asStateFlow()
 
     private val _heatmapData = MutableStateFlow<Map<Long, DayAttendanceStats>>(emptyMap())
@@ -113,12 +121,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     val selectedSubjectRecords: StateFlow<List<AttendanceRecord>> = _selectedSubjectRecords.asStateFlow()
 
     init {
-        loadData()
+        initFlowCollectors()
         refreshDateData(_selectedDate.value)
         refreshMonthData(_currentMonth.value)
     }
 
-    fun loadData() {
+    private fun initFlowCollectors() {
         viewModelScope.launch {
             repository.subjectsFlow.collectLatest { subjects ->
                 val allList = subjects.map { subject ->
@@ -126,10 +134,22 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                     subject to stats
                 }
                 _allSubjectsWithStats.value = allList
-                _subjectsWithStats.value = allList.filter { !it.first.isArchived }
+                val activeList = allList.filter { !it.first.isArchived }
+                _subjectsWithStats.value = activeList
                 _archivedSubjectsWithStats.value = allList.filter { it.first.isArchived }
                 _overallStats.value = repository.getOverallAttendanceStats()
-                refreshTodayLectures(_selectedDate.value, allList, _selectedDateSchedule.value, _selectedDateRecords.value)
+
+                // Refresh currently selected date's schedule and lectures
+                val currentDate = _selectedDate.value
+                val records = repository.getAttendanceForDate(currentDate)
+                _selectedDateRecords.value = records
+                val cal = Calendar.getInstance().apply { timeInMillis = currentDate }
+                val calDay = cal.get(Calendar.DAY_OF_WEEK)
+                val dayOfWeek = if (calDay == Calendar.SUNDAY) 6 else calDay - 2
+                val schedule = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }
+                _selectedDateSchedule.value = schedule
+
+                refreshTodayLectures(currentDate, activeList, schedule, records)
             }
         }
         viewModelScope.launch {
@@ -144,6 +164,22 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             repository.profileFlow.collectLatest {
                 // Synchronize profile state if needed
             }
+        }
+    }
+
+    fun loadData() {
+        viewModelScope.launch {
+            val subjects = repository.getAllSubjects()
+            val allList = subjects.map { subject ->
+                val stats = repository.getSubjectStats(subject.id)
+                subject to stats
+            }
+            _allSubjectsWithStats.value = allList
+            _subjectsWithStats.value = allList.filter { !it.first.isArchived }
+            _archivedSubjectsWithStats.value = allList.filter { it.first.isArchived }
+            _overallStats.value = repository.getOverallAttendanceStats()
+            refreshDateData(_selectedDate.value)
+            refreshMonthData(_currentMonth.value)
         }
     }
 
@@ -171,7 +207,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
 
     fun selectToday() {
         val today = getStartOfDay(System.currentTimeMillis())
-        val todayCal = Calendar.getInstance()
+        val todayCal = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
         _currentMonth.value = todayCal
         _selectedDate.value = today
         refreshDateData(today)
@@ -179,36 +221,63 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun previousMonth() {
-        val cal = Calendar.getInstance().apply {
-            timeInMillis = _currentMonth.value.timeInMillis
+        val cal = (_currentMonth.value.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
             add(Calendar.MONTH, -1)
         }
         _currentMonth.value = cal
         refreshMonthData(cal)
+
+        // Keep selected date safely in view within the new month
+        val selCal = Calendar.getInstance().apply { timeInMillis = _selectedDate.value }
+        val maxDays = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val targetDay = selCal.get(Calendar.DAY_OF_MONTH).coerceIn(1, maxDays)
+        val newSel = (cal.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, targetDay)
+        }
+        selectDate(newSel.timeInMillis)
     }
 
     fun nextMonth() {
-        val cal = Calendar.getInstance().apply {
-            timeInMillis = _currentMonth.value.timeInMillis
+        val cal = (_currentMonth.value.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
             add(Calendar.MONTH, 1)
         }
         _currentMonth.value = cal
         refreshMonthData(cal)
+
+        // Keep selected date safely in view within the new month
+        val selCal = Calendar.getInstance().apply { timeInMillis = _selectedDate.value }
+        val maxDays = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val targetDay = selCal.get(Calendar.DAY_OF_MONTH).coerceIn(1, maxDays)
+        val newSel = (cal.clone() as Calendar).apply {
+            set(Calendar.DAY_OF_MONTH, targetDay)
+        }
+        selectDate(newSel.timeInMillis)
     }
 
     private fun refreshDateData(date: Long) {
         viewModelScope.launch {
-            val records = repository.getAttendanceForDate(date)
+            val normalized = getStartOfDay(date)
+            val records = repository.getAttendanceForDate(normalized)
             _selectedDateRecords.value = records
 
-            val cal = Calendar.getInstance().apply { timeInMillis = date }
+            val cal = Calendar.getInstance().apply { timeInMillis = normalized }
             val calDay = cal.get(Calendar.DAY_OF_WEEK)
             val dayOfWeek = if (calDay == Calendar.SUNDAY) 6 else calDay - 2
 
             val schedule = repository.getTimetableForDay(dayOfWeek).sortedBy { it.startTime }
             _selectedDateSchedule.value = schedule
 
-            refreshTodayLectures(date, _subjectsWithStats.value, schedule, records)
+            val subjects = if (_subjectsWithStats.value.isNotEmpty()) {
+                _subjectsWithStats.value
+            } else {
+                repository.getAllSubjects().filter { !it.isArchived }.map {
+                    it to repository.getSubjectStats(it.id)
+                }
+            }
+
+            refreshTodayLectures(normalized, subjects, schedule, records)
         }
     }
 
@@ -219,14 +288,18 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         records: List<AttendanceRecord>
     ) {
         val list = mutableListOf<LectureItem>()
+        val usedRecordIds = mutableSetOf<Int>()
 
         // 1. Add scheduled timetable entries for the day
         schedule.forEach { entry ->
             val pair = subjectsWithStats.find { it.first.id == entry.subjectId }
             if (pair != null) {
                 val (sub, stats) = pair
-                val record = records.find { it.subjectId == sub.id && it.timetableId == entry.id }
-                    ?: records.find { it.subjectId == sub.id && !it.isExtra }
+                val record = records.find { it.timetableId == entry.id && !usedRecordIds.contains(it.id) }
+                    ?: records.find { it.subjectId == sub.id && it.timetableId == null && !it.isExtra && !usedRecordIds.contains(it.id) }
+                if (record != null) {
+                    usedRecordIds.add(record.id)
+                }
                 list.add(
                     LectureItem(
                         subject = sub,
@@ -244,8 +317,7 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         // 2. Add extra or non-timetable lecture records for this date
-        val scheduledIds = schedule.map { it.subjectId }.toSet()
-        records.filter { it.isExtra || !scheduledIds.contains(it.subjectId) }.forEach { record ->
+        records.filter { !usedRecordIds.contains(it.id) }.forEach { record ->
             val pair = subjectsWithStats.find { it.first.id == record.subjectId }
             if (pair != null) {
                 val (sub, stats) = pair
@@ -277,6 +349,10 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
 
             val cal = (monthCal.clone() as Calendar).apply {
                 set(Calendar.DAY_OF_MONTH, 1)
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
             }
             val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
@@ -310,37 +386,38 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 val missed = dayRecords.count { it.status == AttendanceStatus.ABSENT }
                 val off = dayRecords.count { it.status == AttendanceStatus.OFF }
                 val totalRecorded = attended + missed + off
+                val conducted = attended + missed
+                val unrecordedCount = (daySchedule.size - totalRecorded).coerceAtLeast(0)
 
-                val status: DayAttendanceState
-                if (isWeekend) {
-                    // Weekends are OFF by default unless explicit classes/records exist
-                    if (daySchedule.isEmpty() && dayRecords.isEmpty()) {
-                        status = DayAttendanceState.OFF
-                    } else if (totalRecorded > 0) {
-                        status = when {
-                            attended > 0 && missed == 0 -> DayAttendanceState.ATTENDED
-                            missed > 0 && attended == 0 -> DayAttendanceState.MISSED
-                            attended > 0 && missed > 0 -> DayAttendanceState.MIXED
-                            else -> DayAttendanceState.OFF
+                val status: DayAttendanceState = when {
+                    isWeekend -> {
+                        if (daySchedule.isEmpty() && dayRecords.isEmpty()) {
+                            DayAttendanceState.OFF
+                        } else if (conducted > 0) {
+                            when {
+                                attended > 0 && missed == 0 -> DayAttendanceState.ATTENDED
+                                missed > 0 && attended == 0 -> DayAttendanceState.MISSED
+                                else -> DayAttendanceState.MIXED
+                            }
+                        } else if (off > 0) {
+                            DayAttendanceState.OFF
+                        } else {
+                            DayAttendanceState.NOT_MARKED
                         }
-                    } else {
-                        status = DayAttendanceState.NOT_MARKED
                     }
-                } else {
-                    // Weekdays
-                    if (daySchedule.isEmpty() && dayRecords.isEmpty()) {
-                        status = DayAttendanceState.OFF
-                    } else if (dayRecords.isEmpty()) {
-                        status = DayAttendanceState.NOT_MARKED
-                    } else {
-                        val unrecordedCount = (daySchedule.size - totalRecorded).coerceAtLeast(0)
-                        status = when {
-                            attended > 0 && missed == 0 && unrecordedCount == 0 && off == 0 -> DayAttendanceState.ATTENDED
-                            missed > 0 && attended == 0 && unrecordedCount == 0 && off == 0 -> DayAttendanceState.MISSED
-                            attended > 0 && missed > 0 -> DayAttendanceState.MIXED
-                            off > 0 && attended == 0 && missed == 0 -> DayAttendanceState.OFF
-                            unrecordedCount > 0 && (attended > 0 || missed > 0) -> DayAttendanceState.MIXED
-                            else -> DayAttendanceState.NOT_MARKED
+                    else -> {
+                        if (daySchedule.isEmpty() && dayRecords.isEmpty()) {
+                            DayAttendanceState.OFF
+                        } else if (conducted > 0) {
+                            when {
+                                attended > 0 && missed == 0 && unrecordedCount == 0 -> DayAttendanceState.ATTENDED
+                                missed > 0 && attended == 0 && unrecordedCount == 0 -> DayAttendanceState.MISSED
+                                else -> DayAttendanceState.MIXED
+                            }
+                        } else if (off > 0 && unrecordedCount == 0) {
+                            DayAttendanceState.OFF
+                        } else {
+                            DayAttendanceState.NOT_MARKED
                         }
                     }
                 }
@@ -391,8 +468,13 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     ) {
         viewModelScope.launch {
             val normalized = getStartOfDay(date)
-            val existing = repository.getAttendanceForDate(normalized).find {
-                it.subjectId == subjectId && (timetableId == null || it.timetableId == timetableId)
+            val dayRecords = repository.getAttendanceForDate(normalized)
+            val existing = if (timetableId != null) {
+                dayRecords.find { it.timetableId == timetableId }
+                    ?: dayRecords.find { it.subjectId == subjectId && it.timetableId == null && !it.isExtra }
+            } else {
+                dayRecords.find { it.subjectId == subjectId && it.timetableId == null }
+                    ?: dayRecords.find { it.subjectId == subjectId }
             }
 
             val originalStatusStr = existing?.status?.name ?: "NOT_MARKED"
@@ -443,7 +525,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             }
 
             refreshDateData(normalized)
-            loadData()
+            refreshMonthData(_currentMonth.value)
+            _overallStats.value = repository.getOverallAttendanceStats()
         }
     }
 
@@ -477,7 +560,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 )
             }
             refreshDateData(normalized)
-            loadData()
+            refreshMonthData(_currentMonth.value)
+            _overallStats.value = repository.getOverallAttendanceStats()
         }
     }
 
@@ -490,7 +574,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
             val normalized = getStartOfDay(date)
             repository.deleteAttendanceForDate(normalized)
             refreshDateData(normalized)
-            loadData()
+            refreshMonthData(_currentMonth.value)
+            _overallStats.value = repository.getOverallAttendanceStats()
         }
     }
 
@@ -528,7 +613,8 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
                 )
             )
             refreshDateData(normalized)
-            loadData()
+            refreshMonthData(_currentMonth.value)
+            _overallStats.value = repository.getOverallAttendanceStats()
         }
     }
 
