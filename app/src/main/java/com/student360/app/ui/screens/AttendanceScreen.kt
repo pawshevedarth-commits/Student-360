@@ -6,7 +6,6 @@ package com.student360.app.ui.screens
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +44,7 @@ fun AttendanceScreen(
     val selectedDate by viewModel.selectedDate.collectAsState()
     val todayLectures by viewModel.todayLectures.collectAsState()
     val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
+    val allSubjectsWithStats by viewModel.allSubjectsWithStats.collectAsState()
     val overallStats by viewModel.overallStats.collectAsState()
     val targetPercentage by viewModel.targetPercentage.collectAsState()
 
@@ -55,6 +56,12 @@ fun AttendanceScreen(
 
     val overallPct = overallStats?.percentage ?: 100.0
     val targetPct = targetPercentage.toInt()
+
+    val overallStatusColor = when {
+        overallPct >= targetPct -> colors.success
+        overallPct >= (targetPct - 5.0) -> colors.warning
+        else -> colors.danger
+    }
 
     // Determine aggregate day status from marked records
     val dayStatusInfo = remember(todayLectures, colors) {
@@ -83,34 +90,76 @@ fun AttendanceScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // 1. Top Contextual Header: Attendance | 57.41% | 75% | Simulator | + Add Extra Class
+            // 1. Top Contextual Header: Attendance | 57.41% | 75% | + (Add Extra Class)
             item {
-                StudentScreenHeader(
-                    title = "Attendance",
-                    overallPercentage = overallPct,
-                    targetPercentage = targetPct,
-                    extraAction = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Attendance",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        fontSize = 20.sp,
+                        modifier = Modifier.weight(1f, fill = false),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Attendance Pill: 57.41% | 75%
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = colors.card,
+                            border = BorderStroke(1.dp, colors.border)
+                        ) {
+                            Text(
+                                text = "${String.format(Locale.US, "%.2f", overallPct)}% | $targetPct%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = overallStatusColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+
+                        // Simulator Quick Action Button
                         IconButton(
                             onClick = { showSimulatorDialog = true },
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(colors.card)
-                                .border(BorderStroke(1.dp, colors.border), CircleShape)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
                                 Icons.Default.Info,
                                 contentDescription = "Attendance Simulator",
                                 tint = colors.accent,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
-                    },
-                    onAddClick = { showAddExtraDialog = true }
-                )
+
+                        // + Button for Extra Class
+                        IconButton(
+                            onClick = { showAddExtraDialog = true },
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Extra Class",
+                                tint = colors.textPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             // 2. Date Navigation Row: Previous Day | Current Date | Next Day
@@ -124,10 +173,10 @@ fun AttendanceScreen(
                 ) {
                     Text(
                         text = formattedDate,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = colors.textPrimary,
-                        fontSize = 19.sp,
+                        fontSize = 18.sp,
                         modifier = Modifier.weight(1f, fill = false),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -136,32 +185,24 @@ fun AttendanceScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
                             onClick = { viewModel.previousDay() },
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(colors.card)
-                                .border(BorderStroke(1.dp, colors.border), CircleShape)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 Icons.Default.KeyboardArrowLeft,
                                 contentDescription = "Previous Day",
                                 tint = colors.textSecondary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                         IconButton(
                             onClick = { viewModel.nextDay() },
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(colors.card)
-                                .border(BorderStroke(1.dp, colors.border), CircleShape)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 Icons.Default.KeyboardArrowRight,
                                 contentDescription = "Next Day",
                                 tint = colors.textSecondary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }

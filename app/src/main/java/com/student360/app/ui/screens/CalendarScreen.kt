@@ -52,6 +52,7 @@ fun CalendarScreen(
     val currentMonth by viewModel.currentMonth.collectAsState()
     val allExams by repository.examsFlow.collectAsState(initial = emptyList())
     val subjectsWithStats by viewModel.subjectsWithStats.collectAsState()
+    val overallStats by viewModel.overallStats.collectAsState()
 
     val selectedDateExams = remember(allExams, selectedDate) {
         val selDay = getStartOfDay(selectedDate)
@@ -81,8 +82,13 @@ fun CalendarScreen(
     val isTodaySelected = selectedDate == todayTime
 
     val daysOfWeek = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-    val cal = currentMonth.clone() as Calendar
-    cal.set(Calendar.DAY_OF_MONTH, 1)
+    val cal = (currentMonth.clone() as Calendar).apply {
+        set(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
     val startOffset = cal.get(Calendar.DAY_OF_WEEK) - 1
     val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
     val targetPct = 75
@@ -105,10 +111,11 @@ fun CalendarScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Attendance Summary Badge Pill Row
+            val overallPct = overallStats?.percentage ?: summary.overallPercentage
             item {
                 StudentScreenHeader(
                     title = "",
-                    overallPercentage = summary.overallPercentage,
+                    overallPercentage = overallPct,
                     targetPercentage = targetPct
                 )
             }
@@ -277,20 +284,14 @@ fun CalendarScreen(
                                                         Box(
                                                             modifier = Modifier
                                                                 .size(4.dp)
-                                                                .background(
-                                                                    if (isSelected) (if (colors.isDark) Color.White else colors.accent) else dotColor,
-                                                                    CircleShape
-                                                                )
+                                                                .background(dotColor, CircleShape)
                                                         )
                                                     }
                                                     if (hasExam) {
                                                         Box(
                                                             modifier = Modifier
                                                                 .size(4.dp)
-                                                                .background(
-                                                                    if (isSelected) Color.White else Color(0xFF9333EA),
-                                                                    CircleShape
-                                                                )
+                                                                .background(Color(0xFF9333EA), CircleShape)
                                                         )
                                                     }
                                                 }
@@ -352,7 +353,7 @@ fun CalendarScreen(
                                 color = if (summary.overallPercentage >= 75.0) colors.success.copy(alpha = 0.15f) else colors.danger.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "${String.format(Locale.US, "%.2f", summary.overallPercentage)}% Overall",
+                                    text = "${String.format(Locale.US, "%.1f", summary.overallPercentage)}% Month",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = if (summary.overallPercentage >= 75.0) colors.success else colors.danger,
@@ -413,6 +414,8 @@ fun CalendarScreen(
                             text = when {
                                 isSelectedWeekend && todayLectures.isEmpty() -> "Day Off • No classes scheduled"
                                 todayLectures.isEmpty() -> "No classes scheduled"
+                                conductedClasses == 0 && offClasses > 0 -> "${todayLectures.size} Classes • All Classes Off"
+                                conductedClasses == 0 -> "${todayLectures.size} Classes • Not marked yet"
                                 offClasses > 0 -> "${todayLectures.size} Classes • $attendedClasses Attended • $missedClasses Missed • $offClasses Off • ${String.format(Locale.US, "%.1f", dayPercentage)}%"
                                 else -> "${todayLectures.size} Classes • $attendedClasses Attended • $missedClasses Missed • ${String.format(Locale.US, "%.1f", dayPercentage)}%"
                             },
