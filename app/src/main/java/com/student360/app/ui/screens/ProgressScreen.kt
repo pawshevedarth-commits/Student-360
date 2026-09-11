@@ -84,7 +84,7 @@ fun ProgressScreen(
         allGoals.count { it.status == GoalStatus.ACTIVE }
     }
 
-    // Month Navigation State for the Heatmap
+    // Month Navigation State for the Heatmap (Defaults to current calendar / September 2026)
     var displayedCalendar by remember {
         mutableStateOf(Calendar.getInstance().apply {
             set(Calendar.DAY_OF_MONTH, 1)
@@ -95,7 +95,7 @@ fun ProgressScreen(
         })
     }
 
-    // Selected Day in Heatmap for inline detail panel (defaults to today normalized to midnight)
+    // Selected Day in Heatmap (defaults to today midnight)
     val todayMidnight = remember {
         Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -117,7 +117,7 @@ fun ProgressScreen(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Weekly Overview Card (Section 10 & 2)
+        // 1. Weekly Overview Card (Kept exactly as requested)
         item {
             StudentCard(
                 backgroundColor = colors.card,
@@ -239,7 +239,7 @@ fun ProgressScreen(
             }
         }
 
-        // 2. Attendance Trend Summary Card (Section 3)
+        // 2. Attendance Trend Summary Card (Kept simple as requested)
         item {
             StudentCard(
                 backgroundColor = CardDark,
@@ -257,7 +257,7 @@ fun ProgressScreen(
                         color = PrimaryText,
                         fontSize = 16.sp
                     )
-                    // Trend Indicator icon/badge
+                    // Trend indicator
                     val isIncreased = trendsText.contains("increased", ignoreCase = true)
                     val isDecreased = trendsText.contains("decreased", ignoreCase = true)
                     val badgeColor = when {
@@ -287,7 +287,7 @@ fun ProgressScreen(
             }
         }
 
-        // 3. Natural Heat-Map Calendar Card (Section 4–7, 10–12)
+        // 3. Student360 GitHub-Inspired Attendance Heat Map Card (Unified All-in-One Component)
         item {
             StudentCard(
                 backgroundColor = CardDark,
@@ -297,116 +297,112 @@ fun ProgressScreen(
                 val monthFormatter = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
                 val monthTitle = remember(displayedCalendar) { monthFormatter.format(displayedCalendar.time) }
 
-                // Month Navigation Header
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Month Navigation Header: "September 2026   ‹ ›" + "🏷 Label Day"
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = monthTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryText,
-                            fontSize = 16.5.sp
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(
-                            onClick = {
-                                val prev = displayedCalendar.clone() as Calendar
-                                prev.add(Calendar.MONTH, -1)
-                                displayedCalendar = prev
-                            },
-                            modifier = Modifier.size(28.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowLeft,
-                                contentDescription = "Previous Month",
-                                tint = SecondaryText,
-                                modifier = Modifier.size(20.dp)
+                            Text(
+                                text = monthTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryText,
+                                fontSize = 16.5.sp
                             )
-                        }
-                        IconButton(
-                            onClick = {
-                                val next = displayedCalendar.clone() as Calendar
-                                next.add(Calendar.MONTH, 1)
-                                displayedCalendar = next
-                            },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                contentDescription = "Next Month",
-                                tint = SecondaryText,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-
-                    // Label Day quick action button
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = LightPurple.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, LightPurple.copy(alpha = 0.25f)),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable {
-                                configDate = selectedDayMillis
-                                showConfigDialog = true
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = {
+                                    val prev = displayedCalendar.clone() as Calendar
+                                    prev.add(Calendar.MONTH, -1)
+                                    displayedCalendar = prev
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowLeft,
+                                    contentDescription = "Previous Month",
+                                    tint = SecondaryText,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
-                    ) {
-                        Text(
-                            text = "🏷 Label Day",
-                            color = LightPurple,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                            IconButton(
+                                onClick = {
+                                    val next = displayedCalendar.clone() as Calendar
+                                    next.add(Calendar.MONTH, 1)
+                                    displayedCalendar = next
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.KeyboardArrowRight,
+                                    contentDescription = "Next Month",
+                                    tint = SecondaryText,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = LightPurple.copy(alpha = 0.12f),
+                            border = BorderStroke(1.dp, LightPurple.copy(alpha = 0.25f)),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    configDate = selectedDayMillis
+                                    showConfigDialog = true
+                                }
+                        ) {
+                            Text(
+                                text = "🏷 Label Day",
+                                color = LightPurple,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
                     }
+
+                    // Compact Heat Map Grid (M T W T F S S)
+                    AttendanceHeatmapGrid(
+                        displayedCalendar = displayedCalendar,
+                        records = records,
+                        collegeDays = collegeDays,
+                        selectedDayMillis = selectedDayMillis,
+                        onDayClick = { dayTime ->
+                            selectedDayMillis = dayTime
+                        }
+                    )
+
+                    // Selected Date Details Section (Inside the card right below the heat map)
+                    Divider(color = BorderDark.copy(alpha = 0.7f), thickness = 0.8.dp)
+
+                    InlineSelectedDayDetails(
+                        selectedDateMillis = selectedDayMillis,
+                        records = records,
+                        collegeDays = collegeDays,
+                        subjects = subjects,
+                        normalizeToMidnight = { viewModel.normalizeToMidnight(it) }
+                    )
+
+                    Divider(color = BorderDark.copy(alpha = 0.7f), thickness = 0.8.dp)
+
+                    // Heatmap Legend Section (Inside the card at bottom)
+                    HeatmapLegend()
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Heatmap Calendar Grid
-                AttendanceHeatmapGrid(
-                    displayedCalendar = displayedCalendar,
-                    records = records,
-                    collegeDays = collegeDays,
-                    selectedDayMillis = selectedDayMillis,
-                    onDayClick = { dayTime ->
-                        selectedDayMillis = dayTime
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Divider(color = BorderDark.copy(alpha = 0.7f), thickness = 0.8.dp)
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Legend (Section 11)
-                HeatmapLegend()
             }
         }
 
-        // 4. Selected Day Details Panel (Section 8 & 9)
-        item {
-            SelectedDayDetailCard(
-                selectedDateMillis = selectedDayMillis,
-                records = records,
-                collegeDays = collegeDays,
-                subjects = subjects,
-                normalizeToMidnight = { viewModel.normalizeToMidnight(it) },
-                onLabelDay = {
-                    configDate = selectedDayMillis
-                    showConfigDialog = true
-                }
-            )
-        }
-
-        // 5. Subject-wise Performance Section Header
+        // 4. Subject-wise Performance Section Header
         item {
             SectionHeader(title = "Subject-wise Performance")
         }
@@ -542,6 +538,10 @@ fun ProgressScreen(
     }
 }
 
+/**
+ * Compact GitHub-inspired Attendance Heat Map Grid.
+ * Standard 7-column layout (MON to SUN) with responsive rounded-square cells (16–18dp).
+ */
 @Composable
 fun AttendanceHeatmapGrid(
     displayedCalendar: Calendar,
@@ -575,7 +575,10 @@ fun AttendanceHeatmapGrid(
     val totalCells = firstDayOffset + maxDays
     val numRows = (totalCells + 6) / 7
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         // Weekday header row: M T W T F S S
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -591,7 +594,7 @@ fun AttendanceHeatmapGrid(
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = SecondaryText,
-                        fontSize = 11.sp
+                        fontSize = 11.5.sp
                     )
                 }
             }
@@ -599,7 +602,7 @@ fun AttendanceHeatmapGrid(
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // Month Days Grid
+        // Month Days Heat-Map Grid
         var dayCounter = 1
         for (row in 0 until numRows) {
             Row(
@@ -611,7 +614,7 @@ fun AttendanceHeatmapGrid(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(vertical = 2.dp),
+                            .height(28.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         if (gridIndex >= firstDayOffset && dayCounter <= maxDays) {
@@ -663,30 +666,30 @@ fun AttendanceHeatmapGrid(
                             val isNeutral = (cellColor == Color(0xFF1E2033))
                             val cellBorder = when {
                                 isSelected -> BorderStroke(2.dp, Color.White)
-                                isNeutral -> BorderStroke(1.dp, BorderDark.copy(alpha = 0.5f))
-                                else -> BorderStroke(1.dp, cellColor.copy(alpha = 0.3f))
+                                isNeutral -> BorderStroke(1.dp, BorderDark.copy(alpha = 0.6f))
+                                else -> BorderStroke(1.dp, cellColor.copy(alpha = 0.4f))
                             }
 
                             Box(
                                 modifier = Modifier
-                                    .size(30.dp)
-                                    .clip(RoundedCornerShape(7.dp))
+                                    .size(24.dp)
+                                    .clip(RoundedCornerShape(5.dp))
                                     .background(cellColor)
-                                    .border(cellBorder, RoundedCornerShape(7.dp))
+                                    .border(cellBorder, RoundedCornerShape(5.dp))
                                     .clickable { onDayClick(timeMillis) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "$currentDay",
-                                    color = if (isNeutral) SecondaryText else Color.White,
+                                    color = if (isNeutral) SecondaryText.copy(alpha = 0.8f) else Color.White,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
                             }
                             dayCounter++
                         } else {
-                            Spacer(modifier = Modifier.size(30.dp))
+                            Spacer(modifier = Modifier.size(24.dp))
                         }
                     }
                 }
@@ -695,99 +698,19 @@ fun AttendanceHeatmapGrid(
     }
 }
 
+/**
+ * Compact Selected Day Detail Panel shown directly below the Heat Map inside the card.
+ */
 @Composable
-fun HeatmapLegend() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Intensity scale: Less attendance ▫ ▫ ▫ ▫ ▫ More attendance
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Less attendance",
-                fontSize = 11.sp,
-                color = SecondaryText,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            listOf(
-                Color(0xFF1E2033),
-                Color(0xFF1E4D38),
-                Color(0xFF2E8B57),
-                Color(0xFF40B87A),
-                SuccessGreen
-            ).forEach { color ->
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 2.dp)
-                        .size(11.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(color)
-                        .then(
-                            if (color == Color(0xFF1E2033)) Modifier.border(0.5.dp, BorderDark, RoundedCornerShape(3.dp))
-                            else Modifier
-                        )
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "More attendance",
-                fontSize = 11.sp,
-                color = SecondaryText,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        // Status indicator dots: Full, Partial, Absent, Holiday, Exam
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            LegendItem("Full", SuccessGreen)
-            LegendItem("Partial", WarningOrange)
-            LegendItem("Absent", DangerRed)
-            LegendItem("Holiday", HolidayGrey)
-            LegendItem("Exam", ExamPurple)
-        }
-    }
-}
-
-@Composable
-fun LegendItem(label: String, color: Color) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, CircleShape)
-        )
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = SecondaryText,
-            fontSize = 11.sp
-        )
-    }
-}
-
-@Composable
-fun SelectedDayDetailCard(
+fun InlineSelectedDayDetails(
     selectedDateMillis: Long,
     records: List<AttendanceRecord>,
     collegeDays: List<CollegeDay>,
     subjects: List<Subject>,
-    normalizeToMidnight: (Long) -> Long,
-    onLabelDay: () -> Unit
+    normalizeToMidnight: (Long) -> Long
 ) {
     val normalizedDate = remember(selectedDateMillis) { normalizeToMidnight(selectedDateMillis) }
-    val dateFormatter = remember { SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()) }
     val dateStr = remember(selectedDateMillis) { dateFormatter.format(Date(selectedDateMillis)) }
 
     val dayStatus = remember(collegeDays, normalizedDate) {
@@ -849,128 +772,194 @@ fun SelectedDayDetailCard(
         }
     }
 
-    StudentCard(
-        backgroundColor = CardDark,
-        borderColor = BorderDark,
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Header Row: Date & Status Badge
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Selected: $dateStr",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryText,
+                fontSize = 14.sp
+            )
+
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = statusBadgeColor.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, statusBadgeColor.copy(alpha = 0.35f))
+            ) {
+                Text(
+                    text = statusBadgeTitle,
+                    color = statusBadgeColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        if (dayRecords.isNotEmpty()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryText,
-                        fontSize = 15.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = statusBadgeColor.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, statusBadgeColor.copy(alpha = 0.35f))
-                ) {
-                    Text(
-                        text = statusBadgeTitle,
-                        color = statusBadgeColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
-            }
-
-            // Metrics Summary Row: e.g. "5 / 5 Classes Attended" • "100% Attendance"
-            if (dayRecords.isNotEmpty()) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = ElevatedCardDark,
-                    border = BorderStroke(1.dp, BorderDark),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "$attended / ${dayRecords.size} Classes",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = PrimaryText,
-                            fontSize = 13.sp
-                        )
-                        Text(
-                            text = if (conducted > 0) "${String.format(Locale.US, "%.0f", attendancePct)}% Attendance" else "All Off",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (attendancePct >= 75.0) SuccessGreen else DangerRed,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-
-                // Listing of individual lecture logs
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    dayRecords.forEach { record ->
-                        val subName = subjects.find { it.id == record.subjectId }?.name ?: "Subject"
-                        val (statusText, statColor) = when (record.status) {
-                            AttendanceStatus.PRESENT -> "Attended" to SuccessGreen
-                            AttendanceStatus.ABSENT -> "Missed" to DangerRed
-                            AttendanceStatus.OFF -> "Off / Cancelled" to WarningOrange
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(SurfaceDark.copy(alpha = 0.6f))
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = subName,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Medium,
-                                color = PrimaryText,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = statusText,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = statColor,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
-            } else {
                 Text(
-                    text = if (dayStatus != null) "Marked as ${dayStatus.name.replace("_", " ")} on college calendar."
-                    else "No attendance classes were logged on this date.",
+                    text = "$attended / ${dayRecords.size} Classes",
                     style = MaterialTheme.typography.bodySmall,
                     color = SecondaryText,
                     fontSize = 12.5.sp
                 )
+                Text(
+                    text = if (conducted > 0) "${String.format(Locale.US, "%.0f", attendancePct)}% Attendance" else "All Off",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (attendancePct >= 75.0) SuccessGreen else DangerRed,
+                    fontSize = 12.5.sp
+                )
             }
+
+            // Compact listing of subjects logged for this day
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                dayRecords.forEach { record ->
+                    val subName = subjects.find { it.id == record.subjectId }?.name ?: "Subject"
+                    val (statusText, statColor) = when (record.status) {
+                        AttendanceStatus.PRESENT -> "Attended" to SuccessGreen
+                        AttendanceStatus.ABSENT -> "Missed" to DangerRed
+                        AttendanceStatus.OFF -> "Off / Cancelled" to WarningOrange
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SurfaceDark.copy(alpha = 0.6f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = subName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = PrimaryText,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = statColor,
+                            fontSize = 10.5.sp
+                        )
+                    }
+                }
+            }
+        } else {
+            Text(
+                text = if (dayStatus != null) "Marked as ${dayStatus.name.replace("_", " ")} on college calendar."
+                else "No attendance classes logged for this date.",
+                style = MaterialTheme.typography.bodySmall,
+                color = SecondaryText,
+                fontSize = 12.sp
+            )
         }
+    }
+}
+
+/**
+ * Compact, non-overflowing Legend below the calendar grid.
+ */
+@Composable
+fun HeatmapLegend() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // 5-level attendance intensity scale
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Less attendance",
+                fontSize = 11.sp,
+                color = SecondaryText,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            listOf(
+                Color(0xFF1E2033),
+                Color(0xFF1E6E45),
+                Color(0xFF2E8B57),
+                Color(0xFF40B87A),
+                SuccessGreen
+            ).forEach { color ->
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 2.dp)
+                        .size(10.dp)
+                        .clip(RoundedCornerShape(2.5.dp))
+                        .background(color)
+                        .then(
+                            if (color == Color(0xFF1E2033)) Modifier.border(0.5.dp, BorderDark, RoundedCornerShape(2.5.dp))
+                            else Modifier
+                        )
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "More attendance",
+                fontSize = 11.sp,
+                color = SecondaryText,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        // Status indicator chips
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            LegendItem("Full", SuccessGreen)
+            LegendItem("Partial", WarningOrange)
+            LegendItem("Absent", DangerRed)
+            LegendItem("Holiday", HolidayGrey)
+            LegendItem("Exam", ExamPurple)
+        }
+    }
+}
+
+@Composable
+fun LegendItem(label: String, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .background(color, CircleShape)
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = SecondaryText,
+            fontSize = 10.5.sp
+        )
     }
 }
