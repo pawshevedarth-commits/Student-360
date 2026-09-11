@@ -367,7 +367,7 @@ fun MainShell(repository: StudentRepository) {
                                     currentScreen = Screen.STUDY
                                 }
                             )
-                            Screen.ATTENDANCE -> AttendanceScreen(
+                            Screen.ATTENDANCE -> TimetableScreen(
                                 repository = repository,
                                 viewModel = attendanceViewModel,
                                 scheduleViewModel = scheduleViewModel,
