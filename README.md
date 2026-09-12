@@ -22,7 +22,7 @@
 ### 📊 1. Intelligent Attendance Management
 - **Target Tracking**: Set customizable attendance target thresholds (e.g., 75%, 80%, 85%).
 - **Bunk & Recovery Calculator**: Instantly know how many classes you can afford to miss or how many consecutive classes you must attend to restore your target percentage.
-- **Detailed History**: Log past attendance records by date and status (Present, Absent, Cancelled).
+- **Detailed History & Heat Map**: Track attendance consistency with interactive monthly heat maps and daily status records.
 - **Proactive Alerts**: Receive notifications if your attendance in any subject drops below the safety margin.
 
 ### 📅 2. Dynamic Timetable & Scheduling
